@@ -1,0 +1,786 @@
+/* Grundlegende Styles für die Webseite */
+body {
+    font-family: 'InterVariable', 'Inter', Arial, Helvetica, sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    margin: 0;
+    padding: 0;
+    background: #101010;
+    color: #fff;
+    padding-top: 90px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+header {
+    background: #000000;
+    color: #fff;
+    padding: 1.5rem 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.header-container {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+}
+
+.logo {
+    font-size: 1.6rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 2rem;
+}
+
+nav a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.2s;
+}
+
+nav a:hover {
+    color: #ffd700;
+}
+
+main {
+    width: 100%;
+    max-width: none;
+    margin: 2rem 0;
+    background: transparent;
+    padding: 2rem 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* Für alle Container, die zentriert oder mit max-width arbeiten, padding ergänzen */
+main, .header-container, .work-section, .alt-grid, .about-container, .contact-container, .project-info, .project-video-wrapper, .project-image-link {
+    padding-left: 10px;
+    padding-right: 10px;
+    box-sizing: border-box;
+}
+
+footer {
+    background: #000 !important;
+    color: #fff;
+    text-align: center;
+    padding: 1rem 0 1rem 0;
+    width: 100%;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* Kein padding-left/right mehr! */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.work-section {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0;
+    overflow-x: visible;
+    display: flex;
+    justify-content: center;
+}
+
+.alt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 24px;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    aspect-ratio: unset;
+    box-sizing: border-box;
+}
+
+.tile-vert {
+    grid-row: span 2;
+    grid-column: span 1;
+}
+
+.tile-horiz {
+    grid-row: span 2;
+    grid-column: span 2;
+}
+
+.tile-vert img, .tile-horiz img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.work-tile {
+    background: #181818;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
+    box-sizing: border-box;
+}
+
+.work-tile img {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16/9;
+    height: auto;
+    object-fit: cover;
+    object-position: center 30%;
+    display: block;
+    max-height: 100vh;
+}
+
+.tile-desc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    background: rgba(16,16,16,0.92);
+    color: #ffd700;
+    font-weight: bold;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    border-radius: 10px;
+    padding: 1.2rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
+
+.tile-title {
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    text-align: left;
+    width: 100%;
+}
+
+.tile-text {
+    color: #fff;
+    font-size: 1rem;
+    font-weight: normal;
+    text-align: left;
+    margin: 0;
+    line-height: 1.3;
+    width: 100%;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+.work-tile:hover .tile-desc {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.about-section {
+    width: 100%;
+    max-width: none;
+    display: flex;
+    justify-content: left;
+    align-items: left;
+    margin-top: 4rem;
+    margin-bottom: 4rem;
+    padding: 0;
+}
+
+.about-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 1100px;
+    width: 100%;
+    /* Hintergrund und Kachel-Optik entfernen */
+    background: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 2.5rem 2rem;
+    position: relative;
+    gap: 10px !important;
+    margin: 0 auto !important;
+}
+
+
+
+.about-image {
+    flex: 1 1 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    z-index: 1;
+    margin-right: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.about-image img {
+    width: auto !important;
+    height: auto !important;
+    max-width: 140%;
+    max-height: 500px;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    background: #222;
+    display: block;
+    margin: 0 !important;
+    image-rendering: high-quality;
+    image-rendering: -webkit-optimize-contrast;
+    backface-visibility: hidden;
+    filter: none;
+}
+
+.about-text {
+    flex: 1 1 0;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    margin: 0 0 0 20px;
+    z-index: 1;
+    text-align: left;
+}
+
+.about-text h2 {
+    margin-bottom: 0.5rem !important;
+    text-align: left !important;
+    align-self: flex-start;
+}
+
+.about-text p {
+    margin-top: 0.2rem !important;
+}
+
+.contact-section {
+    width: 100vw;
+    max-width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    margin-bottom: 0;
+    padding: 0;
+}
+
+.contact-container {
+    background: none;
+    padding: 0 1.5rem 0 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    text-align: center;
+    max-width: 500px;
+    width: 90vw;
+    color: #fff;
+    box-shadow: none;
+}
+
+.contact-message {
+    font-family: 'InterVariable', 'Inter', Arial, sans-serif !important;
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-style: normal;
+    font-size: 1.4rem;
+    margin-bottom: 1.2rem;
+    color: #ffd700;
+    letter-spacing: 0.2px;
+    line-height: 1.2;
+}
+
+.contact-links {
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+.contact-email, .contact-instagram {
+    color: #fff;
+    text-decoration: none;
+    transition: color 0.2s;
+    word-break: break-all;
+}
+
+.contact-email:hover, .contact-instagram:hover {
+    color: #ffd700;
+}
+
+.work-tile-link {
+    display: block;
+    height: 100%;
+    width: 100%;
+    text-decoration: none;
+    color: inherit;
+}
+
+.work-tile-link:focus .work-tile,
+.work-tile-link:hover .work-tile {
+    box-shadow: 0 4px 16px rgba(255,215,0,0.18), 0 2px 8px rgba(0,0,0,0.12);
+    transform: translateY(-2px) scale(1.02);
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.project-video-wrapper {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto 2.5rem auto;
+    aspect-ratio: 16/9;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.project-video {
+    width: 100%;
+    height: 100%;
+    min-height: 320px;
+    border: none;
+    display: block;
+    background: #000;
+}
+
+.project-info {
+    max-width: 900px;
+    margin: 0 auto 2.5rem auto;
+    display: flex;
+    flex-direction: row;
+    gap: 2.5rem;
+    background: none;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.project-abstract, .project-credits, .project-roles {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    min-width: 0;
+    max-width: 300px;
+}
+
+.project-title {
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+  max-width: 900px;
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.project-abstract h2,
+.project-credits h3,
+.project-roles h3 {
+    margin: 0 0 0.2rem 0;
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: left;
+}
+
+.project-abstract p,
+.project-credits p,
+.project-roles p {
+    margin: 0;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: normal;
+    text-align: left;
+    word-break: break-word;
+}
+
+.project-image-link {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto 2.5rem auto;
+  aspect-ratio: 16/9;
+  display: block;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+}
+.project-image-link img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  aspect-ratio: 16/9;
+  display: block;
+  border-radius: 16px;
+  background: #000;
+}
+
+@media (max-width: 1000px) {
+    .project-video-wrapper {
+        max-width: 98vw;
+    }
+    .project-image-link {
+        max-width: 98vw;
+    }
+}
+
+@media (max-width: 650px) {
+    .project-video-wrapper {
+        min-height: 180px;
+        border-radius: 10px;
+    }
+    .project-video {
+        min-height: 180px;
+    }
+    .project-image-link {
+        min-height: 180px;
+        border-radius: 10px;
+    }
+    .project-image-link img {
+        min-height: 180px;
+        border-radius: 10px;
+    }
+}
+
+@media (max-width: 900px) {
+    .about-section {
+        justify-content: center !important;
+    }
+    .about-container {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 32px !important;
+        padding: 1.5rem 1rem;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+    }
+    .about-image, .about-text {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    .about-text {
+        margin: 0;
+        text-align: center;
+        align-items: center;
+    }
+    .about-image {
+        justify-content: center;
+    }
+    .about-container::before {
+        display: none;
+    }
+    .about-image img {
+        width: 80vw !important;
+        max-width: 320px !important;
+        height: auto !important;
+        aspect-ratio: 3/4 !important;
+    }
+    .about-container {
+        gap: 16px !important;
+    }
+}
+@media (max-width: 350px) {
+    .about-text,
+    .about-text *,
+    .about-image,
+    .about-image * {
+        text-align: left !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    .about-container {
+        align-items: flex-start !important;
+    }
+    .about-section {
+        align-items: flex-start !important;
+    }
+    /* OVERRIDE global font rule for .about-text and children */
+    .about-text,
+    .about-text *,
+    .about-text h2,
+    .about-text p {
+        text-align: left !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+    }
+}
+
+/* Remove global centering for .about-text and children */
+.about-text,
+.about-text *,
+.about-text h2,
+.about-text p {
+    text-align: left !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+}
+
+@media (max-width: 1100px) {
+    .alt-grid {
+        width: 98vw;
+        max-width: 98vw;
+    }
+    .about-image img {
+        max-width: 384px !important; /* 20% mehr als 320px, jetzt 40% mehr als 320px */
+    }
+    .about-text {
+        margin-right: 1rem;
+    }
+}
+@media (max-width: 900px) {
+    .alt-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: repeat(6, 1fr);
+        height: auto;
+        max-width: 100vw;
+    }
+    .work-section {
+        max-width: 100vw;
+        padding: 0;
+    }
+    main {
+        padding: 0;
+    }
+    .alt-grid {
+        width: 98vw;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .about-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+        padding: 1.5rem 1rem;
+        gap: 20px !important; /* Auch im mobilen Layout etwas mehr Abstand */
+    }
+    .about-image img {
+        width: 100%;
+        max-width: 320px;
+        height: auto;
+        margin: 0 auto;
+    }
+    .about-text {
+        width: 100%;
+    }
+}
+@media (max-width: 1100px) and (min-width: 661px) {
+    .alt-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: repeat(3, 1fr);
+        width: 98vw;
+        max-width: 98vw;
+        aspect-ratio: unset;
+    }
+}
+@media (max-width: 650px) {
+    .alt-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: none;
+        aspect-ratio: unset;
+        gap: 20px;
+        width: 98vw;
+        max-width: 98vw;
+    }
+    .work-tile {
+        position: static !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .work-tile img {
+        width: 100% !important;
+        aspect-ratio: 16/9 !important;
+        height: auto !important;
+        border-radius: 10px !important;
+        display: block !important;
+    }
+    .tile-desc {
+        position: static !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        background: transparent !important;
+        color: #fff !important;
+        padding: 0.7rem 0 1.2rem 0 !important;
+        border-radius: 0 !important;
+        margin-bottom: 1.5rem !important;
+        transition: none !important;
+        display: block !important;
+        width: 100% !important;
+        z-index: auto !important;
+        left: 0.2rem !important;
+        right: 0.2rem !important;
+        max-width: calc(100% - 0.4rem) !important;
+    }
+    .work-tile:hover .tile-desc {
+        opacity: 1 !important;
+    }
+    .tile-title {
+        color: #fff !important;
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.2rem !important;
+        text-align: left !important;
+    }
+    .tile-text {
+        color: #fff !important;
+        margin: 0 !important;
+        text-align: left !important;
+    }
+}
+
+@media (min-width: 651px) {
+    .tile-desc {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: 0;
+        background: rgba(16,16,16,0.92);
+        color: #fff;
+        font-weight: bold;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        border-radius: 10px;
+        padding: 1.2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        text-align: left;
+        width: 100%;
+        z-index: 2;
+    }
+    .work-tile:hover .tile-desc {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+@media (max-width: 900px) and (min-width: 651px) {
+    .alt-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: repeat(3, 1fr);
+        width: 98vw;
+        max-width: 98vw;
+        aspect-ratio: unset;
+    }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@font-face {
+  font-family: 'InterVariable';
+  src: url('fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SourceSerifVariable';
+  src: url('fonts/SourceSerif4-VariableFont_opsz,wght.ttf') format('truetype');
+  font-weight: 200 900;
+  font-display: swap;
+}
+
+.inter-variable {
+  font-family: 'InterVariable', 'Inter', sans-serif;
+  font-optical-sizing: auto;
+  font-weight: var(--inter-weight, 400);
+  font-style: normal;
+}
+
+/* Alle Texte außer Überschriften (h1-h6) auf Source Serif umstellen */
+main, .about-text, .contact-message, .contact-links, .tile-text, .project-description, .project-abstract p, .project-credits p, .project-roles p, .logo, nav a, .work-tile, .work-tile-link, .about-container, .about-image, .about-section, .contact-section, .contact-container {
+  font-family: 'SourceSerifVariable', 'Source Serif Pro', serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'InterVariable', 'Inter', Arial, sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+}
+
+header, .header-container, .logo, nav, nav a {
+  font-family: 'InterVariable', 'Inter', Arial, sans-serif !important;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.work-tile img.project1-thumb {
+    object-position: 10% 30%;
+}
+
+.work-tile img.project3-thumb {
+    image-rendering: auto;
+    image-rendering: -webkit-optimize-contrast;
+    backface-visibility: hidden;
+}
+
+.work-tile img[src="img/1.jpeg"] {
+    image-rendering: optimizeQuality;
+    image-rendering: -webkit-optimize-contrast;
+    backface-visibility: hidden;
+    filter: none;
+}
+
+/* Für mobile: sicherstellen, dass kein overflow entsteht */
+@media (max-width: 400px) {
+    main, .header-container, .work-section, .alt-grid, .about-container, .contact-container, .project-info, .project-video-wrapper, .project-image-link {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    /* footer bleibt ohne padding */
+}

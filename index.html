@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meine Webseite</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body id="top">
+    <header>
+        <div class="header-container">
+            <div class="logo">Fabian Nausner</div>
+            <nav>
+                <ul>
+                    <li><a href="#top">Work</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main>
+        <section>
+           
+        </section>
+        <section class="work-section">
+        
+            <div class="work-grid alt-grid">
+                <a href="projekt1.html" class="work-tile-link">
+                    <div class="work-tile">
+                        <img src="img/6.png" alt="Projekt 1" class="project1-thumb">
+                        <div class="tile-desc">
+                            <h2 class="tile-title">Sitzordnung</h2>
+                            <p class="tile-text">Eine Arbeit welche sich mit der visualisierung von Macht und gesellschaftlichen Konstruckten auseinander setzt.</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="projekt2.html" class="work-tile-link">
+                    <div class="work-tile">
+                        <img src="img/8.png" alt="Projekt 2">
+                        <div class="tile-desc">
+                            <h2 class="tile-title">Myopia</h2>
+                            <p class="tile-text">Eine fiktive Welt in der Macht mit der realen Körpergröße zusammenhängt.</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="projekt3.html" class="work-tile-link">
+                    <div class="work-tile">
+                        <img src="img/1.jpeg" alt="Projekt 3">
+                        <div class="tile-desc">
+                            <h2 class="tile-title">Mixam</h2>
+                            <p class="tile-text">Ein visuelles Experiment über Mixam und seine Bezihung zur Verantwortung.</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="projekt4.html" class="work-tile-link">
+                    <div class="work-tile">
+                        <img src="img/9.png" alt="Projekt 4">
+                        <div class="tile-desc">
+                            <h2 class="tile-title">Maxim</h2>
+                            <p class="tile-text">Eine experimentelle und dokumentarische Arbeit über das Ablegen von Gewohnheiten.</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="projekt5.html" class="work-tile-link">
+                    <div class="work-tile">
+                        <img src="img/10.png" alt="Projekt 5">
+                        <div class="tile-desc">
+                            <h2 class="tile-title">Neuer Morgen</h2>
+                            <p class="tile-text">Ein Short über das fliehen in den nächsten Morgen.</p>
+                        </div>
+                    </div>
+                </a>
+                <a href="projekt6.html" class="work-tile-link">
+                    <div class="work-tile">
+                        <img src="img/7.png" alt="Projekt 6">
+                        <div class="tile-desc">
+                            <h2 class="tile-title">Sich (wieder) finden</h2>
+                            <p class="tile-text">Ein Kurzfilm zu dem überkommen von Kindheitstraumata und der verbindung zu dem Kindheits-Ich.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+        <section class="about-section" id="about">
+            <div class="about-container">
+                <div class="about-image">
+                    <img src="img/2.jpeg" alt="Portrait Fabian Nausner">
+                </div>
+                <div class="about-text">
+                    <h2>About</h2>
+                    <p>Mein Name ist Fabian Nausner und ich bin Filmemacher aus Trier. 2025 habe ich meinen Bachelor-Abschluss in Intermedia-Design in Trier gemacht. Hier habe ich meine Leidenschaft für das kreative ausdrücken in Videoform kennen und lieben gelernt.</p>
+                    <h2>Skills</h2>
+                    <p>Ich habe Erfahrung als Kamera-Operator. In allen Projekten, welche oben gezeigt werden habe ich die Kamera bedient.<br>Desweiteren habe ich Ehrfahrung in Videoschnitt so wie Colorgrading und viel Erfahrung im Bereich Kompositing. Das Programm meiner Wahl ist Davinci Resolve sowie Davinci Fusion für Kompositing. Hier habe ich Erfahrung mit dem Node-Basierenden  Kompositingstil gesammelt.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <div style="display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%;">
+            <section class="contact-section" id="contact" style="margin-bottom: 2.5rem;">
+                <div class="contact-container">
+                    <h2>Ich würde mich freuen, mit dir zusammenzuarbeiten!</h2>
+                    <div class="contact-links">
+                        <a href="mailto:fabian.nausner@gmail.com" class="contact-email">fabian.nausner@gmail.com</a><br>
+                        <a href="https://www.instagram.com/fabianssketchbook/" target="_blank" class="contact-instagram">Instagram: @fabianssketchbook</a>
+                    </div>
+                </div>
+            </section>
+            <p style="margin-top: auto; opacity: 0.7; font-size: 1rem;">&copy; designed by Fabian Nausner - 2025</p>
+        </div>
+    </footer>
+    <script>
+    // Smooth scroll for anchor links in the navigation
+    document.addEventListener('DOMContentLoaded', function() {
+      const navLinks = document.querySelectorAll('nav a[href^="#"]');
+      navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+          const targetId = this.getAttribute('href').slice(1);
+          const target = document.getElementById(targetId);
+          if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
