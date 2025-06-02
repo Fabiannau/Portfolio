@@ -1,3 +1,18 @@
+@font-face {
+    font-family: 'SatoshiVariable';
+    src: url('fonts/Satoshi-Variable.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'SatoshiVariable';
+    src: url('fonts/Satoshi-VariableItalic.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+}
+
 /* Grundlegende Styles */
 body, main, .header-container, .work-section, .alt-grid, .about-container, .contact-container, .project-info, .project-video-wrapper, .project-image-link {
     box-sizing: border-box;
@@ -5,7 +20,7 @@ body, main, .header-container, .work-section, .alt-grid, .about-container, .cont
     padding-right: 10px;
 }
 body {
-    font-family: 'InterVariable', 'Inter', Arial, Helvetica, sans-serif;
+    font-family: 'SatoshiVariable', Arial, Helvetica, sans-serif;
     font-optical-sizing: auto;
     font-weight: 400;
     font-style: normal;
@@ -16,7 +31,7 @@ body {
     padding-top: 90px;
 }
 header, .header-container, .logo, nav, nav a {
-    font-family: 'InterVariable', 'Inter', Arial, sans-serif !important;
+    font-family: 'SatoshiVariable', Arial, sans-serif;
     font-optical-sizing: auto;
     font-weight: 700;
     font-style: normal;
@@ -42,7 +57,7 @@ header {
     font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: 1px;
-    font-family: 'InterVariable', 'Inter', Arial, sans-serif !important;
+    font-family: 'SatoshiVariable', Arial, sans-serif;
     font-optical-sizing: auto;
     font-style: normal;
     line-height: 1.1;
@@ -228,7 +243,7 @@ footer {
     margin-bottom: 2rem; text-align: center; max-width: 500px; width: 90vw; color: #fff; box-shadow: none;
 }
 .contact-message {
-    font-family: 'InterVariable', 'Inter', Arial, sans-serif !important;
+    font-family: 'SatoshiVariable', Arial, sans-serif;
     font-optical-sizing: auto;
     font-weight: 700;
     font-size: 1.4rem;
