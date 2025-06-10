@@ -29,7 +29,14 @@ body {
     background: #101010;
     color: #fff;
     padding-top: 90px;
-    overflow-y: hidden; /* Scrollbalken rechts ausblenden */
+    overflow-y: auto; /* Scrollen erlauben, aber Scrollbar verstecken */
+}
+/* Scrollbar für alle Browser ausblenden */
+html, body {
+    scrollbar-width: none; /* Firefox */
+}
+body::-webkit-scrollbar, html::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
 }
 header, .header-container, .logo, nav, nav a {
     font-family: 'SatoshiVariable', Arial, sans-serif;
@@ -425,7 +432,19 @@ footer {
     .about-text { margin: 0; text-align: center; align-items: center; }
     .about-image { justify-content: center; }
     .about-container::before { display: none; }
-    .about-image img { width: 80vw; max-width: 320px; aspect-ratio: 3/4; }
+    .about-image {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .about-image img {
+        width: 100%;
+        max-width: 320px;
+        height: auto;
+        object-fit: cover;
+        margin: 0;
+        box-sizing: border-box;
+        display: block;
+    }
 }
 
 /* Remove global centering for .about-text and children */
@@ -538,12 +557,4 @@ footer {
         padding-left: 10px;
         padding-right: 10px;
     }
-}
-
-/* Optional: Scrollbar komplett für alle Browser ausblenden */
-html, body {
-    scrollbar-width: none; /* Firefox */
-}
-body::-webkit-scrollbar, html::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Edge */
 }
