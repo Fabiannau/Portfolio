@@ -9,7 +9,7 @@
 <body id="top">
     <header>
         <div class="header-container">
-            <div class="logo">Fabian Nausner</div>
+            <span class="logo">Fabian Nausner</span>
             <nav>
                 <ul>
                     <li><a href="#top">Work</a></li>
@@ -17,6 +17,11 @@
                     <li><a href="#contact">Contact</a></li>
                 </ul>
             </nav>
+            <button class="hamburger" id="hamburger-btn" aria-label="Menü">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
     </header>
     <main>
@@ -111,7 +116,6 @@
         </div>
     </footer>
     <script>
-    // Smooth scroll for anchor links in the navigation
     document.addEventListener('DOMContentLoaded', function() {
       const navLinks = document.querySelectorAll('nav a[href^="#"]');
       navLinks.forEach(link => {
@@ -124,7 +128,24 @@
           }
         });
       });
+
+      // Hamburger-Menü Funktionalität
+      const hamburger = document.getElementById('hamburger-btn');
+      const nav = document.querySelector('.header-container nav');
+      function closeMenuOnResize() {
+        if (window.innerWidth > 490) {
+          nav.classList.remove('open');
+          hamburger.classList.remove('open');
+        }
+      }
+      if (hamburger && nav) {
+        hamburger.addEventListener('click', function() {
+          hamburger.classList.toggle('open');
+          nav.classList.toggle('open');
+        });
+        window.addEventListener('resize', closeMenuOnResize);
+      }
     });
-  </script>
+    </script>
 </body>
 </html>

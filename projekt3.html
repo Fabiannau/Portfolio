@@ -9,7 +9,7 @@
 <body id="top">
     <header>
         <div class="header-container">
-            <div class="logo">Fabian Nausner</div>
+            <span class="logo">Fabian Nausner</span>
             <nav>
                 <ul>
                     <li><a href="index.html#top">Work</a></li>
@@ -17,6 +17,11 @@
                     <li><a href="index.html#contact">Contact</a></li>
                 </ul>
             </nav>
+            <button class="hamburger" id="hamburger-btn" aria-label="Menü">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
     </header>
     <main>
@@ -45,5 +50,37 @@
             </div>
         </section>
     </main>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  const navLinks = document.querySelectorAll('nav a[href^="#"]');
+  navLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      const targetId = this.getAttribute('href').slice(1);
+      const target = document.getElementById(targetId);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Hamburger-Menü Funktionalität
+  const hamburger = document.getElementById('hamburger-btn');
+  const nav = document.querySelector('.header-container nav');
+  function closeMenuOnResize() {
+    if (window.innerWidth > 490) {
+      nav.classList.remove('open');
+      hamburger.classList.remove('open');
+    }
+  }
+  if (hamburger && nav) {
+    hamburger.addEventListener('click', function() {
+      hamburger.classList.toggle('open');
+      nav.classList.toggle('open');
+    });
+    window.addEventListener('resize', closeMenuOnResize);
+  }
+});
+</script>
 </body>
 </html>

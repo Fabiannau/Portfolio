@@ -29,6 +29,7 @@ body {
     background: #101010;
     color: #fff;
     padding-top: 90px;
+    overflow-y: hidden; /* Scrollbalken rechts ausblenden */
 }
 header, .header-container, .logo, nav, nav a {
     font-family: 'SatoshiVariable', Arial, sans-serif;
@@ -43,15 +44,16 @@ header {
     position: fixed;
     top: 0; left: 0; width: 100%;
     z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .header-container {
-    max-width: 90%;
+    max-width: 920px;
     margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 2rem;
+    padding: 0 20px;
+    position: relative; /* Wichtig für absolute Positionierung des Hamburger-Buttons */
 }
 .logo {
     font-size: 1.5rem;
@@ -261,10 +263,12 @@ footer {
 .work-tile-link {
     display: block; height: 100%; width: 100%; text-decoration: none; color: inherit;
 }
-.work-tile-link:focus .work-tile, .work-tile-link:hover .work-tile {
-    box-shadow: 0 4px 16px rgba(255,215,0,0.18), 0 2px 8px rgba(0,0,0,0.12);
+.work-tile-link:focus .work-tile,
+.work-tile-link:hover .work-tile {
+    /* Entfernt den gelben Glow und die Transformation */
+    box-shadow: none;
     transform: translateY(-2px) scale(1.02);
-    transition: box-shadow 0.2s, transform 0.2s;
+    transition: none;
 }
 
 .project-video-wrapper, .project-image-link {
@@ -335,6 +339,75 @@ footer {
 }
 .project-image-link img {
     width: 100%; height: 100%; object-fit: cover; aspect-ratio: 16/9; display: block; border-radius: 16px; background: #000;
+}
+
+/* Hamburger Button Grundstil */
+.hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: 3001;
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    box-shadow: none;
+    outline: none;
+}
+.hamburger span {
+    display: block;
+    width: 28px;
+    height: 3px;
+    margin: 5px 0;
+    background: #fff;
+    border-radius: 2px;
+    transition: 0.3s;
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Hamburger-Button und Navigation für kleine Displays */
+@media (max-width: 490px) {
+    .header-container {
+        position: relative;
+    }
+    nav ul {
+        display: none !important;
+    }
+    .hamburger {
+        display: flex !important;
+    }
+    nav.open ul {
+        display: flex !important;
+        flex-direction: column;
+        position: absolute;
+        top: 60px;
+        right: 0;
+        left: auto;
+        background: #181818;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        padding: 1rem 2rem;
+        gap: 1.2rem;
+        z-index: 3000;
+    }
+}
+
+/* Hamburger-Button Animation für "open" Zustand */
+.hamburger.open span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+.hamburger.open span:nth-child(2) {
+    opacity: 0;
+}
+.hamburger.open span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
 }
 
 @media (max-width: 900px) {
@@ -465,4 +538,12 @@ footer {
         padding-left: 10px;
         padding-right: 10px;
     }
+}
+
+/* Optional: Scrollbar komplett für alle Browser ausblenden */
+html, body {
+    scrollbar-width: none; /* Firefox */
+}
+body::-webkit-scrollbar, html::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
 }
