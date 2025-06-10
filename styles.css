@@ -78,9 +78,9 @@ nav a:hover { color: #ffd700; }
 
 main {
     width: 100%;
-    margin: 2rem 0;
+    margin: 2% 0;
     background: transparent;
-    padding: 2rem 0;
+    
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
