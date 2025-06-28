@@ -558,3 +558,149 @@ footer {
         padding-right: 10px;
     }
 }
+
+/* Fotokarussell Styles */
+.photo-carousel {
+    width: 100%;
+    max-width: 900px;
+    margin: 2.5rem auto 1cm auto;
+    position: relative;
+    background: #181818;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+}
+
+.carousel-container {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+    padding-bottom: 1cm;
+}
+
+.carousel-track {
+    display: flex;
+    transition: transform 0.5s ease;
+    height: 100%;
+}
+
+.carousel-slide {
+    min-width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.carousel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    background: #000;
+}
+
+.carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.carousel-nav:hover {
+    background: rgba(255, 215, 0, 0.8);
+    color: #000;
+}
+
+.carousel-prev {
+    left: 15px;
+}
+
+.carousel-next {
+    right: 15px;
+}
+
+.carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.carousel-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.carousel-dot.active {
+    background: #ffd700;
+}
+
+.carousel-dot:hover {
+    background: rgba(255, 215, 0, 0.7);
+}
+
+.photo-carousel-placeholder {
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2a2a2a;
+    color: #888;
+    font-size: 1.1rem;
+    text-align: center;
+    border-radius: 16px;
+}
+
+/* Mobile Anpassungen für das Karussell */
+@media (max-width: 650px) {
+    .carousel-container {
+        height: 250px;
+    }
+    
+    .photo-carousel-placeholder {
+        height: 250px;
+        font-size: 1rem;
+    }
+    
+    .carousel-nav {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .carousel-prev {
+        left: 10px;
+    }
+    
+    .carousel-next {
+        right: 10px;
+    }
+    
+    .carousel-dots {
+        padding: 12px;
+    }
+    
+    .carousel-dot {
+        width: 10px;
+        height: 10px;
+    }
+}

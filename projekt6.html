@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projekt 6 – Fabian Nausner</title>
+    <title>Sich (wieder) finden – Fabian Nausner</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="carousel.js"></script>
 </head>
 <body id="top">
     <header>
@@ -48,11 +49,19 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Fotokarussell -->
+            <div class="photo-carousel">
+                <!-- Wird automatisch von JavaScript befüllt -->
+            </div>
         </section>
     </main>
     <!-- Footer entfernt auf Wunsch -->
     <script>
-document.addEventListener('DOMContentLoaded', function() {
+//document.addEventListener('DOMContentLoaded', function() {
+  // Initialisiere Karussell für Projekt 6
+  photoCarousel = new PhotoCarousel('projekt6');
+  
   const navLinks = document.querySelectorAll('nav a[href^="#"]');
   navLinks.forEach(link => {
     link.addEventListener('click', function(e) {
