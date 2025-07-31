@@ -27,7 +27,22 @@
     </header>
     <main>
         <section class="showreel">
-           
+            <div class="showreel-container">
+                <div class="showreel-video-wrapper">
+                    <iframe 
+                        class="showreel-video" 
+                        id="showreel-video"
+                        src="https://www.youtube.com/embed/X8Wk6Cp0m70?autoplay=1&mute=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+                        title="Showreel - 2025"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen>
+                    </iframe>
+                    <div class="showreel-overlay" id="showreel-overlay">
+                        <div class="showreel-title">Showreel - 2025</div>
+                    </div>
+                </div>
+            </div>
         </section>
         <section class="work-section">
         
@@ -145,6 +160,131 @@
           nav.classList.toggle('open');
         });
         window.addEventListener('resize', closeMenuOnResize);
+      }
+
+      // YouTube Iframe Management - einfache aber effektive Lösung
+      const iframe = document.getElementById('showreel-video');
+      const overlay = document.getElementById('showreel-overlay');
+      
+      if (iframe && overlay) {
+        console.log('🎬 YouTube iframe gefunden');
+        
+        // Overlay initial ausblenden
+        overlay.classList.remove('show');
+        
+        let player;
+        let userPaused = false;
+        let hasUserInteracted = false;
+        
+        // YouTube API laden
+        if (typeof YT === 'undefined') {
+          const tag = document.createElement('script');
+          tag.src = 'https://www.youtube.com/iframe_api';
+          const firstScriptTag = document.getElementsByTagName('script')[0];
+          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        }
+        
+        // Einfache User Interaction Detection
+        const startVideoOnInteraction = () => {
+          if (!hasUserInteracted && player) {
+            console.log('🖱️ Starte Video nach User-Interaktion');
+            hasUserInteracted = true;
+            player.mute();
+            player.playVideo();
+          }
+        };
+        
+        // Event Listener für erste Interaktion
+        ['click', 'touchstart', 'keydown', 'scroll'].forEach(event => {
+          document.addEventListener(event, startVideoOnInteraction, { once: true, passive: true });
+        });
+        
+        // YouTube Player initialisieren
+        window.onYouTubeIframeAPIReady = function() {
+          player = new YT.Player('showreel-video', {
+            videoId: 'X8Wk6Cp0m70',
+            playerVars: {
+              autoplay: 1,
+              mute: 1,
+              controls: 1,
+              showinfo: 0,
+              rel: 0,
+              modestbranding: 1,
+              playsinline: 1
+            },
+            events: {
+              'onReady': function(event) {
+                console.log('✅ YouTube Player bereit');
+                
+                // Versuche sofort zu starten
+                try {
+                  event.target.mute();
+                  event.target.playVideo();
+                  console.log('🎬 Autoplay-Versuch');
+                } catch (error) {
+                  console.log('❌ Autoplay blockiert');
+                }
+                
+                // Zeige eine dezente Nachricht falls Video nicht startet
+                setTimeout(() => {
+                  if (!hasUserInteracted && event.target.getPlayerState() !== 1) {
+                    console.log('💡 Video wartet auf User-Interaktion');
+                    // Kleiner visueller Hinweis (optional)
+                    overlay.style.background = 'rgba(0, 0, 0, 0.1)';
+                    overlay.classList.add('show');
+                    setTimeout(() => {
+                      overlay.classList.remove('show');
+                      overlay.style.background = 'rgba(0, 0, 0, 0.3)';
+                    }, 1500);
+                  }
+                }, 2000);
+              },
+              'onStateChange': function(event) {
+                if (event.data === YT.PlayerState.PLAYING) {
+                  console.log('▶️ Video spielt erfolgreich');
+                  hasUserInteracted = true;
+                  userPaused = false;
+                  overlay.classList.remove('show');
+                } else if (event.data === YT.PlayerState.ENDED) {
+                  console.log('🔄 Video beendet - starte Loop');
+                  userPaused = false;
+                  event.target.seekTo(0);
+                  event.target.playVideo();
+                } else if (event.data === YT.PlayerState.PAUSED && hasUserInteracted) {
+                  console.log('⏸️ Video pausiert vom User');
+                  userPaused = true;
+                  overlay.classList.add('show');
+                }
+              },
+              'onError': function(event) {
+                console.log('❌ YouTube Player Fehler:', event.data);
+              }
+            }
+          });
+        };
+        
+        // Direkter Klick auf Video-Bereich
+        iframe.addEventListener('click', () => {
+          if (!hasUserInteracted && player) {
+            startVideoOnInteraction();
+          }
+        });
+        
+        // Falls YouTube API nicht lädt, Fallback mit einfachem iframe reload
+        setTimeout(() => {
+          if (!window.YT) {
+            console.log('⚠️ YouTube API nicht geladen - verwende einfachen Fallback');
+            // Einfacher Fallback: iframe src mit timestamp updaten um neu zu laden
+            const originalSrc = iframe.src;
+            document.addEventListener('click', function fallbackStart() {
+              iframe.src = originalSrc + '&t=' + Date.now();
+              document.removeEventListener('click', fallbackStart);
+            }, { once: true });
+          }
+        }, 5000);
+        
+      } else {
+        console.log('❌ YouTube iframe oder Overlay nicht gefunden!');
       }
     });
     </script>

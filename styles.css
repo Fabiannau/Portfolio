@@ -92,6 +92,70 @@ footer {
     min-height: 220px;
 }
 
+/* Showreel Section */
+.showreel {
+    padding: 0 0 2.5rem 0;
+    width: 100%;
+}
+.showreel-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+}
+.showreel-video-wrapper {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    aspect-ratio: 4/3;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.showreel-video {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #000;
+    border-radius: 16px;
+}
+
+/* Showreel Overlay für pausiertes Video */
+.showreel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    border-radius: 16px;
+    z-index: 10;
+}
+
+.showreel-overlay.show {
+    opacity: 1;
+}
+
+.showreel-title {
+    font-family: 'SatoshiVariable', Arial, sans-serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
 .work-section, .alt-grid {
     width: 100%;
     max-width: 900px;
