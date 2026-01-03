@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fabian's Website</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="assets/Favicon.png">
+</head>
+<body>
+  <div class="video-bg">
+    <div id="player"></div>
+  </div>
+  <div class="hover-area">
+    <a href="about.html" class="btn-custom"></a>
+    <button class="btn-prev"></button>
+    <button class="btn-next"></button>
+    <button class="btn-vol-down"></button>
+    <button class="btn-vol-up"></button>
+  </div>
+  <a id="dynamic-link" class="dynamic-link" href="#" target="_blank"></a>
+  <div class="overlay-image"></div>
+  <div class="overlay-image-top"></div>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    const jumpTimes = [0, 72, 297, 374, 480];
+    const linkMap = [
+      { start: 0, end: 72, url: 'https://youtu.be/5RdIL5g6KIo' },
+      { start: 72, end: 297, url: 'https://youtu.be/ik1TygMddMo' },
+      { start: 297, end: 374, url: 'https://www.instagram.com/p/DByoV8WMAlR/' },
+      { start: 374, end: 480, url: 'https://youtu.be/Ps6RwBS6flQ' },
+      { start: 480, end: 9999, url: 'https://example.com/e' }
+    ];
+    let currentIndex = 0;
+    let player;
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        videoId: '7ikkmD22_8g',
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          controls: 0,
+          loop: 1,
+          playlist: '7ikkmD22_8g',
+          modestbranding: 1,
+          showinfo: 0,
+          rel: 0
+        },
+        events: {
+          onReady: function(e) { e.target.playVideo(); setupButtonListeners(); updateDynamicLink(); }
+        }
+      });
+    }
+    function jump(direction) {
+      currentIndex += direction;
+      if (currentIndex < 0) currentIndex = jumpTimes.length - 1;
+      if (currentIndex >= jumpTimes.length) currentIndex = 0;
+      seekTo(jumpTimes[currentIndex]);
+    }
+    function seekTo(seconds) {
+      if (player && typeof player.seekTo === 'function') {
+        player.seekTo(seconds, true);
+      }
+    }
+    function setupButtonListeners() {
+      document.querySelector('.btn-prev').addEventListener('click', function(e) {
+        e.stopPropagation();
+        jump(-1);
+      });
+      document.querySelector('.btn-next').addEventListener('click', function(e) {
+        e.stopPropagation();
+        jump(1);
+      });
+      document.querySelector('.btn-vol-down').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (player && typeof player.getVolume === 'function' && typeof player.setVolume === 'function') {
+          if (player.isMuted()) {
+            player.unMute();
+            player.setVolume(10);
+          } else {
+            let v = player.getVolume();
+            player.setVolume(Math.max(0, v - 10));
+          }
+        }
+      });
+      document.querySelector('.btn-vol-up').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (player && typeof player.getVolume === 'function' && typeof player.setVolume === 'function') {
+          if (player.isMuted()) {
+            player.unMute();
+            player.setVolume(10);
+          } else {
+            let v = player.getVolume();
+            player.setVolume(Math.min(100, v + 10));
+          }
+        }
+      });
+    }
+    // Dynamischer Link
+    function updateDynamicLink() {
+      const link = document.getElementById('dynamic-link');
+      if (!player || !link) return;
+      let t = 0;
+      try { t = player.getCurrentTime(); } catch(e) {}
+      for (const entry of linkMap) {
+        if (t >= entry.start && t < entry.end) {
+          link.href = entry.url;
+          link.textContent = '';
+          break;
+        }
+      }
+      setTimeout(updateDynamicLink, 500);
+    }
+    // Overlay hover logic
+    const hoverArea = document.querySelector('.hover-area');
+    const overlayTop = document.querySelector('.overlay-image-top');
+    hoverArea.addEventListener('mouseenter', () => {
+      overlayTop.classList.add('visible');
+    });
+    hoverArea.addEventListener('mouseleave', () => {
+      overlayTop.classList.remove('visible');
+    });
+  </script>
+</body>
+</html>

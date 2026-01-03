@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>About me</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="video-bg">
+    <div id="player"></div>
+  </div>
+  <div class="hover-area">
+    <a href="index.html" class="btn-custom"></a>
+    <!-- eventuelle weitere Buttons... -->
+  </div>
+  <div class="overlay-image"></div>
+  <div class="overlay-image-top"></div>
+  <!-- Navigation Button entfernt -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player;
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        videoId: 'n2lCNvws9fs',
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          controls: 0,
+          loop: 1,
+          playlist: 'n2lCNvws9fs',
+          modestbranding: 1,
+          showinfo: 0,
+          rel: 0
+        },
+        events: {
+          onReady: function(e) { e.target.playVideo(); }
+        }
+      });
+    }
+    // Overlay hover logic
+    const hoverArea = document.querySelector('.hover-area');
+    const overlayTop = document.querySelector('.overlay-image-top');
+    hoverArea.addEventListener('mouseenter', () => {
+      overlayTop.classList.add('visible');
+    });
+    hoverArea.addEventListener('mouseleave', () => {
+      overlayTop.classList.remove('visible');
+    });
+  </script>
+</body>
+</html>
