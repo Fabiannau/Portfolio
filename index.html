@@ -52,10 +52,23 @@
       });
     }
     function jump(direction) {
-      currentIndex += direction;
-      if (currentIndex < 0) currentIndex = jumpTimes.length - 1;
-      if (currentIndex >= jumpTimes.length) currentIndex = 0;
-      seekTo(jumpTimes[currentIndex]);
+      if (!player || !player.getCurrentTime) return;
+      let t = 0;
+      try { t = player.getCurrentTime(); } catch(e) {}
+      // Finde das aktuelle Kapitel
+      let currentIdx = jumpTimes.findIndex(time => t < time) - 1;
+      if (currentIdx < 0) currentIdx = jumpTimes.length - 1;
+      if (direction > 0) {
+        // Nächstes Kapitel
+        let nextIdx = currentIdx + 1;
+        if (nextIdx >= jumpTimes.length) nextIdx = 0;
+        seekTo(jumpTimes[nextIdx]);
+      } else {
+        // Vorheriges Kapitel
+        let prevIdx = currentIdx - 1;
+        if (prevIdx < 0) prevIdx = jumpTimes.length - 1;
+        seekTo(jumpTimes[prevIdx]);
+      }
     }
     function seekTo(seconds) {
       if (player && typeof player.seekTo === 'function') {
