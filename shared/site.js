@@ -1,6 +1,21 @@
 // Live-Seite: Video-Verhalten. (ES-Modul)
 import { randomCut } from './randomcut.mjs';
 
+// · Zurück-Knopf: kam man von dieser Website, wie „Zurück" im Browser -> man landet an derselben Stelle,
+//   von der aus man geklickt hat (Browser stellt die Scrollposition wieder her). Sonst: Link zur Startseite.
+(function () {
+  var back = document.querySelector('a.back');
+  if (!back) return;
+  back.addEventListener('click', function (e) {
+    try {
+      if (document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1) {
+        e.preventDefault();
+        history.back();
+      }
+    } catch (_) {}
+  });
+})();
+
 // · Zufallsschnitt: schneidet live zufällig, solange er (fast) im Bild ist
 (function () {
   var els = document.querySelectorAll('.it-random[data-clips]');

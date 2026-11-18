@@ -28,8 +28,7 @@
 .pg .it-image picture { display: contents; }
 .pg .ink-layer { position: absolute; inset: 0; z-index: 100000; pointer-events: none; } /* Handschrift über allen Elementen */
 .pg .ink { position: absolute; left: 0; width: 100%; display: block; }
-.pg a.it { cursor: pointer; transition: opacity .25s, transform .25s; }
-.pg a.it:hover { opacity: .88; }
+.pg a.it { cursor: pointer; }
 .pg .it.pinned { position: fixed; } /* am Bildschirm verankert (it.pin) */
 .pg .it-draw canvas { width: 100%; height: 100%; left: 0; top: 0; }
 /* Szenen-Video: kleiner Ton-Knopf (Klick aufs ganze Video schaltet ebenfalls) */

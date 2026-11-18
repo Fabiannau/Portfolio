@@ -155,6 +155,8 @@ content/pages/<id>/
   bzw. `<img srcset>`; `sizes` = exakter vw-Anteil (Item-Breite/Seitenbreite/Crop). Werkzeuge: cwebp/dwebp, sips, ffmpeg.
   GitHub Action erzeugt NICHTS selbst → Fassungen müssen committet sein (Veröffentlichen erledigt das).
   Ergebnis Startseite: 22,6 MB → 0,6 MB (1x) / 1,6 MB (Retina) / 2,7 MB (iPhone 3x).
+- Kein Hover-Effekt auf verlinkten Objekten (Nutzerwunsch). Zurück-Knopf (`a.back`): kam man von derselben Website →
+  `history.back()` (Browser stellt die Scrollposition wieder her), sonst normaler Link zur Startseite (site.js).
 - **Editor spielt keine Videos** (auch keinen Zufallsschnitt): Standbild/Poster + kleines ▶. Abgespielt wird in Vorschau/live.
 
 ## Zufallsschnitt (Objekttyp `random`) & externe Links
