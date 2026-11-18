@@ -14,9 +14,10 @@ export function fontFaceCSS(fonts, prefix = '') {
 
 export const pageFile = id => (id === 'index' ? 'index.html' : `${encodeURIComponent(id)}.html`);
 
-export function renderDocument(page, site, fonts, ids) {
+export function renderDocument(page, site, fonts, ids, variants = null) {
   const known = new Set(ids);
   const opt = {
+    variants: variants ? (pid, src) => variants.get(src) : null,
     media: (pid, f) => `media/${encodeURIComponent(pid)}/${encodeURIComponent(f)}`,
     link: id => (/^https?:\/\//i.test(id) ? id : known.has(id) ? pageFile(id) : null), // Seite oder externe Webseite
     v: page.updated,
@@ -42,7 +43,7 @@ ${AI_META}
 <title>${esc(title)}</title>
 <link rel="stylesheet" href="site.css">
 <script>(function(){var d=document.documentElement;if(/[?&]ansicht=handy/.test(location.search))d.classList.add('force-m');
-function v(){d.style.setProperty('--vw',d.clientWidth/100+'px')}v();addEventListener('resize',v);if(window.ResizeObserver)new ResizeObserver(v).observe(d)})()</script>
+function v(){d.style.setProperty('--vwn',d.clientWidth/100)}v();addEventListener('resize',v);if(window.ResizeObserver)new ResizeObserver(v).observe(d)})()</script>
 <style>
 ${fontFaceCSS(fonts)}
 html,body{margin:0;background:${esc(bg)}}

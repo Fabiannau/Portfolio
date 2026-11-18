@@ -20,7 +20,12 @@
   object-fit: fill;
   max-width: none;
 }
-.pg .it-text { white-space: pre-wrap; overflow-wrap: break-word; }
+.pg .it-text { height: 0; overflow: visible; } /* Höhe kommt vom skalierten Inhalt */
+.pg .it-text .tx {
+  box-sizing: border-box; white-space: pre-wrap; overflow-wrap: break-word;
+  transform: scale(var(--k)); transform-origin: 0 0; /* feste Einheiten -> skaliert = stabile Zeilenumbrüche */
+}
+.pg .it-image picture { display: contents; }
 .pg .ink-layer { position: absolute; inset: 0; z-index: 100000; pointer-events: none; } /* Handschrift über allen Elementen */
 .pg .ink { position: absolute; left: 0; width: 100%; display: block; }
 .pg a.it { cursor: pointer; transition: opacity .25s, transform .25s; }

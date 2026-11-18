@@ -6,8 +6,9 @@
 //   so ist vorher bekannt, welche Clips als Nächstes kommen.
 // · Diese Clips werden im Hintergrund VORGELADEN – NACHEINANDER (nie mehrere gleichzeitig, sonst klauen sie dem
 //   sichtbaren Clip die Bandbreite), mit niedriger Priorität, als Blob im Speicher (wiederverwendbar).
-// · Ist ein Clip schon im Speicher -> sofort. Lädt er gerade -> darauf warten (kein Doppel-Download).
-//   Ist er noch gar nicht dran (z. B. der allererste) -> direkt streamen; solange pausiert das Vorladen.
+// · Ist der nächste Clip schon im Speicher -> sofort. Sonst NICHT warten, sondern zufällig einen anderen schon
+//   geladenen Clip nehmen (der vorgesehene lädt weiter) – so friert das Bild nie ein, sobald 2–3 Clips da sind.
+//   Erst wenn noch gar nichts geladen ist: auf den vorladenden warten bzw. den allerersten direkt streamen.
 // Genutzt von der Live-Seite (site.js) und vom Editor.
 const SEG_MIN = 0.7, SEG_MAX = 4.0, AHEAD = 3;
 
@@ -68,15 +69,24 @@ export function randomCut(wrap) {
     const v = vids[1 - active];
     for (let tries = 0; tries < 8 && my === session && playing; tries++) {
       topUp(true);
-      const url = queue.shift();
+      let url;
+      const front = vids[active].dataset.clip;
+      if (ready.has(queue[0])) url = queue.shift();
+      else {
+        // vorgesehener Clip noch unterwegs -> einen anderen schon geladenen nehmen (zufällig)
+        const pool = clips.filter(u => ready.has(u) && u !== front && u !== last);
+        if (pool.length) url = pool[Math.floor(Math.random() * pool.length)];
+        else url = queue.shift();
+      }
       topUp(false);
       try {
         let src = ready.get(url);
         let streaming = false;
-        if (!src && blobs.has(url)) src = await fetchClip(url); // lädt gerade vor -> abwarten, nicht doppelt laden
+        if (!src && blobs.has(url)) src = await fetchClip(url); // nichts geladen, lädt gerade vor -> abwarten
         if (!src) { src = url; streaming = true; }               // noch nicht dran -> direkt streamen
         if (my !== session) return;
         if (v.src !== abs(src)) v.src = src;
+        v.dataset.clip = url;
         v.currentTime = 0;
         if (streaming) { // Vorladen pausieren, bis der Clip durchgeladen ist
           hold++;
@@ -110,8 +120,14 @@ export function randomCut(wrap) {
     timer = setTimeout(() => cut(my), len * 1000);
     prepare(my);
   }
-  // schon vorladen, bevor der Schnitt sichtbar ist (nur die Clips NACH dem ersten – der erste streamt dann sofort)
-  function warm() { if (clips.length) topUp(true); }
+  // schon vorladen, bevor der Schnitt sichtbar ist: der erste Clip streamt gleich ins Wartevideo
+  // (prepare() findet ihn dann fertig vor), die folgenden laden nacheinander im Hintergrund vor
+  function warm() {
+    if (!clips.length || playing) return;
+    topUp(true);
+    const v = vids[1 - active];
+    if (!v.dataset.clip && queue[0]) { v.preload = 'auto'; v.src = queue[0]; v.dataset.clip = queue[0]; }
+  }
   function start() {
     if (playing || !clips.length || vids.length < 2) return;
     playing = true;

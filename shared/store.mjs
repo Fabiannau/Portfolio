@@ -87,3 +87,27 @@ export async function listFonts(P) {
   }
   return out.sort((a, b) => a.family.localeCompare(b.family) || a.weight - b.weight || a.style.localeCompare(b.style));
 }
+
+// ---- Responsive Bildfassungen (content/pages/<id>/resp/<bild>-<breite>.webp|.jpg) ----
+export const VAR_DIR = 'resp';
+export const VAR_WIDTHS = [480, 960, 1440, 2048, 2880];
+export const VAR_SRC = /\.(jpe?g|png)$/i; // aus diesen Formaten werden Fassungen erzeugt
+// -> Map(Bilddatei -> [{w, name}] aufsteigend)
+export async function listVariants(P, id) {
+  const out = new Map();
+  let files = [];
+  try { files = await fs.readdir(path.join(P.pages, id, VAR_DIR)); } catch { return out; }
+  for (const f of files) {
+    const m = /^(.+)-(\d+)\.(webp|jpg)$/.exec(f);
+    if (!m) continue;
+    if (!out.has(m[1])) out.set(m[1], []);
+    out.get(m[1]).push({ w: Number(m[2]), name: f, type: m[3] === 'webp' ? 'image/webp' : 'image/jpeg' });
+  }
+  // JPEG-Sätze: das Original selbst ist die Fassung in Originalbreite
+  try {
+    const st = JSON.parse(await fs.readFile(path.join(P.pages, id, VAR_DIR, '.settings.json'), 'utf8'));
+    for (const [f, s] of Object.entries(st)) if (s.fmt === 'jpg' && s.w0 && /\.jpe?g$/i.test(f) && out.has(f)) out.get(f).push({ w: s.w0, name: f, type: 'image/jpeg', orig: true });
+  } catch {}
+  for (const v of out.values()) v.sort((a, b) => a.w - b.w);
+  return out;
+}

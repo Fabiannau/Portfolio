@@ -99,8 +99,9 @@ body[data-tool="text"] .input { cursor: text; }
 
 .items .it { cursor: grab; }
 .items .it img, .items .it video { pointer-events: none; -webkit-user-drag: none; user-select: none; }
-.items .it-text.editing { cursor: text; user-select: text; outline: 1.5px dashed var(--accent); outline-offset: 4px; z-index: 20; }
-.items .it-text:empty::before { content: "Text…"; opacity: .35; }
+.items .it-text.editing { z-index: 20; }
+.items .it-text.editing .tx { cursor: text; user-select: text; outline: 1.5px dashed var(--accent); outline-offset: 4px; }
+.items .it-text .tx:empty::before { content: "Text…"; opacity: .35; }
 .items .it.has-link::after {
   content: "🔗"; position: absolute; right: 4px; top: 4px; font-size: 12px; line-height: 1;
   background: rgba(255,255,255,.9); border-radius: 4px; padding: 2px 3px; pointer-events: none; font-style: normal;
@@ -314,3 +315,10 @@ body[data-mode="mobile"] .extend small { display: none; }
 /* Mehrfachauswahl */
 .selbox.multi { border-width: 1.5px; }
 .selbox.group { border: 1px dashed var(--accent); box-shadow: none; }
+
+/* Videos & Zufallsschnitt im Editor: nur Standbild, kleines ▶-Zeichen */
+.items .it-video:not(.processing)::before, .items .it-random::before {
+  content: "▶"; position: absolute; left: 6px; bottom: 6px; z-index: 3; font-size: 11px; line-height: 1; color: #fff;
+  background: rgba(0,0,0,.55); padding: 4px 6px; border-radius: 4px; pointer-events: none;
+}
+.items .it-random::before { content: "🎲 Zufallsschnitt"; }

@@ -189,6 +189,7 @@ function layout() {
   stage.style.background = page.bg || BG;
   $('extTop').style.width = $('extBottom').style.width = wpx + 'px';
   stage.style.setProperty('--u', scale + 'px');
+  stage.style.setProperty('--k', scale);
   updatePinVars();
   ovl.setAttribute('viewBox', `0 ${L.top} ${LW()} ${pageH(L)}`);
   layoutTiles(); renderHandles(); renderOverlay();
@@ -529,6 +530,8 @@ function deleteLassoSel() {
 // ---------- Elemente (Fotos, Videos, Text) ----------
 // Element i liegt entweder auf der Seite (#items) oder – fixiert – in der Pin-Ebene (bleibt beim Scrollen stehen)
 const itemEl = i => itemsEl.querySelector(`:scope > [data-i="${i}"]`);
+const boxEl = el => (el && el.classList.contains('it-text') && el.firstElementChild) || el; // Text: innerer, skalierter Block
+const rectOf = el => boxEl(el).getBoundingClientRect();
 function renderItems() {
   itemsEl.innerHTML = L.items.map((it, i) => itemHTML(it, i, L, site, edOpt)).join('');
   paintDraws(); startRandoms();
@@ -554,13 +557,13 @@ function measureTexts() {
   if (!page || !scale) return;
   L.items.forEach((it, i) => {
     if (it.type !== 'text') return;
-    const el = itemEl(i);
-    if (el && el.offsetHeight) it.h = Math.round(el.offsetHeight / scale);
+    const tx = boxEl(itemEl(i));
+    if (tx && tx.offsetHeight) it.h = Math.round(tx.offsetHeight); // .tx ist in Einheiten gesetzt
   });
 }
 function itemBox(i) {
   const it = L.items[i];
-  const h = it.type === 'text' ? (itemEl(i)?.offsetHeight || 0) / scale : it.h;
+  const h = it.type === 'text' ? (boxEl(itemEl(i))?.offsetHeight || it.h || 0) : it.h;
   return { x: it.x, y: it.y, w: it.w, h };
 }
 function select(i) {
@@ -600,7 +603,7 @@ function renderHandles() {
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
     for (const i of multiIdx()) {
       const el = itemEl(i); if (!el) continue;
-      const r = el.getBoundingClientRect();
+      const r = rectOf(el);
       const b = document.createElement('div');
       b.className = 'selbox multi' + (L.items[i].pin ? ' pinned' : '');
       Object.assign(b.style, { left: r.left - st.left + 'px', top: r.top - st.top + 'px', width: r.width + 'px', height: r.height + 'px' });
@@ -619,7 +622,7 @@ function renderHandles() {
   const it = L.items[sel], el = itemEl(sel);
   if (!el) return;
   const host = handlesEl;
-  const r = el.getBoundingClientRect(), st = stage.getBoundingClientRect();
+  const r = rectOf(el), st = stage.getBoundingClientRect();
   const Lx = r.left - st.left, T = r.top - st.top, Wd = r.width, Hd = r.height;
   const box = document.createElement('div');
   box.className = 'selbox' + (it.pin ? ' pinned' : '');
@@ -737,12 +740,13 @@ function createText(p) {
 }
 function startText(i, isNew = false, before = null) {
   if (editing) commitText();
-  const el = itemEl(i); if (!el) return;
+  const outer = itemEl(i); if (!outer) return;
+  const el = boxEl(outer);
   editing = { i, isNew, before: before || snapshot() };
   el.contentEditable = 'plaintext-only';
   if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
   el.spellcheck = false;
-  el.classList.add('editing');
+  outer.classList.add('editing');
   el.focus();
   const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
@@ -759,13 +763,13 @@ function commitText() {
   if (!editing) return;
   const { i, isNew, before } = editing;
   editing = null;
-  const el = itemEl(i);
+  const outer = itemEl(i), el = boxEl(outer);
   const it = L.items[i];
   let txt = '';
   if (el) {
     txt = el.innerText.replace(/\n$/, '');
     el.removeEventListener('input', onTextInput); el.removeEventListener('blur', commitText); el.removeEventListener('paste', onTextPaste);
-    el.contentEditable = 'false'; el.classList.remove('editing');
+    el.contentEditable = 'false'; outer.classList.remove('editing');
   }
   if (!it) return;
   if (!txt.trim()) {
@@ -913,7 +917,7 @@ function setPin(mode, { undo = true, quiet = false } = {}) {
   if (undo) pushUndo();
   const st = stage.getBoundingClientRect(), sc = screenRect(), vis = sc.height / scale;
   for (const i of idx) { // erst alle umrechnen (DOM unverändert), dann einmal neu zeichnen
-    const it = L.items[i], r = itemEl(i).getBoundingClientRect(), h = r.height / scale;
+    const it = L.items[i], r = rectOf(itemEl(i)), h = r.height / scale;
     if (!mode) { it.y = Math.round(L.top + (r.top - st.top) / scale); delete it.pin; }
     else {
       const top = clamp((r.top - sc.top) / scale, 0, Math.max(0, vis - h)); // außerhalb? -> in den Bildschirm holen
@@ -950,7 +954,7 @@ function paintDraws() {
   });
 }
 const r1 = v => Math.round(v * 10) / 10;
-function startRandoms() { itemsEl.querySelectorAll('.it-random[data-clips]').forEach(el => randomCut(el).start()); }
+function startRandoms() { /* im Editor nur Standbild – abgespielt wird in der Vorschau/live */ }
 function groupLasso() {
   if (!lassoSel.length) return;
   const b0 = bboxOf(lassoSel);
@@ -1014,7 +1018,7 @@ function hidePinGuide() { clearTimeout(guideTimer); $('pinGuide').hidden = true;
 function showPinGuide(i, autoHide = false) {
   const it = L.items[i], g = $('pinGuide'), el = itemEl(i);
   if (!it?.pin || !el) return hidePinGuide();
-  const r = el.getBoundingClientRect(), sr = scroller.getBoundingClientRect(), st = stage.getBoundingClientRect();
+  const r = rectOf(el), sr = scroller.getBoundingClientRect(), st = stage.getBoundingClientRect();
   const top = it.pin === 't';
   const sc = screenRect(), edgeY = top ? sc.top : sc.bottom;
   const a = top ? edgeY : r.bottom, b = top ? r.top : edgeY; // Maßlinie von a nach b
@@ -2005,7 +2009,7 @@ function renderGraph() {
   ensurePositions();
   nodesEl.innerHTML = [...allPages.values()].map(p => {
     const g = site.graph[p.id];
-    const opt = { media: edMedia, link: null, thumb: true, v: p.updated };
+    const opt = { media: edMedia, link: null, thumb: true, v: p.updated, k: NODE_W / W };
     return `<div class="node${page && p.id === page.id ? ' current' : ''}" data-id="${esc(p.id)}" style="left:${g.x}px;top:${g.y}px;width:${NODE_W}px">
       <div class="node-head">${p.id === 'index' ? '★ ' : ''}${esc(p.title || p.id)}<small>${p.id === 'index' ? 'Startseite' : '/' + esc(p.id)}</small></div>
       <div class="node-thumb">${pageHTML(p, site, opt)}</div></div>`;

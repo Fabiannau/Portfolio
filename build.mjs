@@ -3,7 +3,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { paths, readSite, listPageIds, readPage, listFonts, isMediaFile } from './shared/store.mjs';
+import { paths, readSite, listPageIds, readPage, listFonts, isMediaFile, listVariants } from './shared/store.mjs';
 import { renderDocument, pageFile } from './shared/document.mjs';
 import { robotsTxt, aiTxt, tdmrepJson } from './shared/aiprotect.mjs';
 
@@ -20,7 +20,7 @@ await fs.mkdir(path.join(DIST, 'media'), { recursive: true });
 
 for (const id of ids) {
   const page = await readPage(P, id);
-  await fs.writeFile(path.join(DIST, decodeURIComponent(pageFile(id))), renderDocument(page, site, fonts, ids));
+  await fs.writeFile(path.join(DIST, decodeURIComponent(pageFile(id))), renderDocument(page, site, fonts, ids, await listVariants(P, id)));
   const src = path.join(P.pages, id), dst = path.join(DIST, 'media', id);
   await fs.mkdir(dst, { recursive: true });
   const keepInk = new Set((page.ink || []).map(k => `ink_${k}.png`));
@@ -29,7 +29,7 @@ for (const id of ids) {
     if (f.isDirectory() && !/^[._]/.test(f.name)) { // Clip-Ordner (Zufallsschnitt)
       await fs.mkdir(path.join(dst, f.name), { recursive: true });
       for (const g of await fs.readdir(path.join(src, f.name))) {
-        if (/\.(mp4|webm|jpg|jpeg|png|webp)$/i.test(g)) await fs.copyFile(path.join(src, f.name, g), path.join(dst, f.name, g));
+        if (/\.(mp4|webm|jpg|jpeg|png|webp|avif)$/i.test(g)) await fs.copyFile(path.join(src, f.name, g), path.join(dst, f.name, g));
       }
       continue;
     }

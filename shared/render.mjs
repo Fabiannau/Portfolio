@@ -99,8 +99,10 @@ export function styleOf(it, site) {
 export function fontStack(f) {
   return SYSTEM_FONTS[f] || `"${String(f).replace(/["\\<>]/g, '')}", ${SYSTEM_FONTS.Sans}`;
 }
-// Größen skalieren mit der Seitenbreite: 1 Einheit = var(--u) (live: Fensterbreite/2560, Editor: Zoom-Maßstab)
-const u = n => `calc(${num(+n, 0)} * var(--u))`;
+// Text wird in festen Seiten-Einheiten gesetzt (1 Einheit = 1px im ungezoomten Raum) und dann als Ganzes per
+// transform: scale(var(--k)) auf die Bildschirmbreite gebracht. So bricht er bei JEDER Zoomstufe gleich um
+// (vorher: Schrift in vw -> Rundung -> Wörter sprangen zwischen den Zeilen hin und her).
+const u = n => `${num(+n, 0)}px`;
 export function textCss(st, pw = W) {
   const align = ['left', 'center', 'right', 'justify'].includes(st.align) ? st.align : 'left';
   let c = `font-family:${fontStack(st.font)};font-size:${u(st.size)};font-weight:${num(+st.weight, 400)};` +
@@ -176,13 +178,13 @@ export function itemHTML(it, i, p, site, opt) {
   const ext = /^https?:\/\//i.test(href || '');
   const head = `<${tag} class="${cls}" data-i="${i}"${href ? ` href="${esc(href)}"` : ''}${ext ? ' target="_blank" rel="noopener"' : ''}`;
   if (it.type === 'text') {
-    return `${head} style="${esc(pos + textCss(styleOf(it, site), pageW(p)))}">${esc(it.text)}</${tag}>`;
+    return `${head} style="${esc(pos)}"><div class="tx" style="${esc(`width:${num(+it.w, 600)}px;` + textCss(styleOf(it, site), pageW(p)))}">${esc(it.text)}</div></${tag}>`;
   }
   // Zufallsschnitt: Clips aus einem Unterordner, live zufällig geschnitten (randomcut.mjs)
   if (it.type === 'random') {
     const dirUrl = mediaUrl(opt, p.id, it.dir || '');
     const poster = it.poster ? `${dirUrl}/${encodeURIComponent(it.poster)}` : '';
-    if (opt.thumb) return `${head} style="${esc(pos)}">${poster ? `<img class="rc-poster" src="${esc(poster)}" alt="">` : ''}</${tag}>`;
+    if (opt.thumb || opt.editor) return `${head} style="${esc(pos)}">${poster ? `<img class="rc-poster" src="${esc(poster)}" alt="">` : ''}</${tag}>`;
     const clips = (it.clips || []).map(c => `${dirUrl}/${encodeURIComponent(c)}`);
     return `${head} style="${esc(pos)}" data-clips="${esc(JSON.stringify(clips))}">` +
       (poster ? `<img class="rc-poster" src="${esc(poster)}" alt="${esc(it.alt || '')}" loading="lazy">` : '') +
@@ -199,15 +201,15 @@ export function itemHTML(it, i, p, site, opt) {
     const src = esc(mediaUrl(opt, p.id, it.src));
     const poster = it.poster ? ` poster="${esc(mediaUrl(opt, p.id, it.poster))}"` : '';
     let v;
-    if (opt.thumb && it.poster) v = `<img src="${esc(mediaUrl(opt, p.id, it.poster))}" alt="" style="${inner}">`;
-    else if (opt.thumb) v = `<video src="${src}#t=0.5" muted playsinline preload="metadata" style="${inner}"></video>`;
+    if ((opt.thumb || opt.editor) && it.poster) v = `<img src="${esc(mediaUrl(opt, p.id, it.poster))}" alt="" style="${inner}">`;
+    else if (opt.thumb || opt.editor) v = `<video src="${src}#t=0.5" muted playsinline preload="metadata" style="${inner}"></video>`;
     else if (it.mode === 'scene' && !opt.editor && !href) {
       // Szene: startet, sobald ganz im Bild; Ton blendet mit der Sichtbarkeit ein/aus; Klick = Ton an/aus (site.js)
       v = `<video src="${src}"${poster} playsinline preload="metadata" data-scene style="${inner}"></video>` +
         `<button class="snd" type="button" aria-label="Ton an/aus"></button>`;
     }
-    else if (opt.editor || it.mode !== 'player' || href) {
-      v = `<video src="${src}"${poster} muted loop${opt.editor ? ' autoplay' : ''} playsinline preload="metadata" data-loop style="${inner}"></video>`;
+    else if (it.mode !== 'player' || href) {
+      v = `<video src="${src}"${poster} muted loop playsinline preload="metadata" data-loop style="${inner}"></video>`;
     } else {
       v = `<video src="${src}"${poster} controls playsinline preload="metadata" style="${inner}"></video>`;
     }
@@ -215,7 +217,18 @@ export function itemHTML(it, i, p, site, opt) {
   }
   // image
   const src = esc(mediaUrl(opt, p.id, it.src));
-  return `${head} style="${esc(pos)}"><img src="${src}" alt="${esc(it.alt || '')}" loading="lazy" decoding="async" style="${inner}"></${tag}>`;
+  const img = `<img src="${src}" alt="${esc(it.alt || '')}" loading="lazy" decoding="async" style="${inner}">`;
+  const vars = opt.variants ? opt.variants(p.id, it.src) : null;
+  if (!vars || !vars.length) return `${head} style="${esc(pos)}">${img}</${tag}>`;
+  // angezeigte Breite = Anteil an der Seitenbreite (bei Ausschnitt entsprechend größer) -> exakte „sizes"
+  const vw = Math.min(400, it.w / pageW(p) / (it.crop ? it.crop.w : 1) * 100);
+  const dir = opt.media(p.id, 'resp');
+  const srcset = vars.map(v => `${v.orig ? mediaUrl(opt, p.id, it.src) : `${dir}/${encodeURIComponent(v.name)}`} ${v.w}w`).join(', ');
+  const sizes = `${vw.toFixed(2)}vw`;
+  if (vars[0].type === 'image/jpeg') { // JPEG-Fassungen: direkt im <img>
+    return `${head} style="${esc(pos)}"><img src="${src}" srcset="${esc(srcset)}" sizes="${sizes}" alt="${esc(it.alt || '')}" loading="lazy" decoding="async" style="${inner}"></${tag}>`;
+  }
+  return `${head} style="${esc(pos)}"><picture><source type="image/webp" srcset="${esc(srcset)}" sizes="${sizes}">${img}</picture></${tag}>`;
 }
 
 export function inkHTML(p, opt) {
@@ -231,6 +244,7 @@ export function inkHTML(p, opt) {
 export function pageHTML(p, site, opt, cls = '') {
   const items = p.items.map((it, i) => itemHTML(it, i, p, site, opt)).join('');
   const bg = color(p.bg, BG);
-  const unit = opt.u || `calc(var(--vw, 1vw) * ${100 / pageW(p)})`;
-  return `<div class="pg${cls ? ' ' + cls : ''}" style="aspect-ratio:${pageW(p)}/${pageH(p)};background:${bg};--u:${unit}">${items}<div class="ink-layer">${inkHTML(p, opt)}</div></div>`;
+  // --k = Bildschirm-px pro Seiten-Einheit (ohne Einheit, für transform), --u = dasselbe als Länge
+  const k = opt.k || `calc(var(--vwn, 19.2) * ${100 / pageW(p)})`;
+  return `<div class="pg${cls ? ' ' + cls : ''}" style="aspect-ratio:${pageW(p)}/${pageH(p)};background:${bg};--k:${k};--u:calc(var(--k) * 1px)">${items}<div class="ink-layer">${inkHTML(p, opt)}</div></div>`;
 }

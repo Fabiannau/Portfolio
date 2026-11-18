@@ -141,6 +141,52 @@ content/pages/<id>/
   wurde darauf aufgesetzt, kein Force-Push) und liegt zusätzlich in `~/Desktop/Backup-alte-Website-fabiannausner.de-2026-11-19/`.
 - Hinweis „Large files detected" beim Push = nur Warnung (> 50 MB); harte Grenze 100 MB pro Datei.
 
+## Effizienz & stabile Darstellung (2026-11-19)
+- **Text** wird in festen Seiten-Einheiten gesetzt: `.it-text` (Höhe 0) > `.tx` mit `width: <w>px; font-size: <n>px`
+  und `transform: scale(var(--k))`. `--k` = Bildschirm-px pro Einheit (unitless): live `calc(var(--vwn) * 100/Breite)`
+  (`--vwn` = clientWidth/100 per Head-Skript, Fallback 19.2), Editor `--k = scale`, Übersicht `opt.k`. `--u = --k·1px`.
+  Dadurch identische Zeilenumbrüche & Proportionen bei jedem Zoom (vorher schwankte die Textbreite bis 4,5 %).
+  Editor: bearbeitet wird der innere `.tx` (`boxEl()`), Rahmen/Messungen über `rectOf()`; `it.h` = `.tx.offsetHeight`.
+- **Responsive Bilder:** Server erzeugt je JPG/PNG Fassungen in `resp/<datei>-<breite>.(webp|jpg)` (480/960/1440/2048/
+  2880, max. Originalbreite) – beim Upload, beim Serverstart und vor jedem Veröffentlichen. Qualität PRO BILD:
+  WebP q82→95, bis SSIM ≥ 0,97 gegen das gleich verkleinerte Original; sonst JPEG q90 (körnige / schon komprimierte
+  Fotos), dann ist bei JPEG-Originalen das Original selbst die größte Fassung. Merkt sich die Wahl in
+  `resp/.settings.json` (wird mit veröffentlicht – Build liest es). Renderer: `<picture><source webp srcset sizes>`
+  bzw. `<img srcset>`; `sizes` = exakter vw-Anteil (Item-Breite/Seitenbreite/Crop). Werkzeuge: cwebp/dwebp, sips, ffmpeg.
+  GitHub Action erzeugt NICHTS selbst → Fassungen müssen committet sein (Veröffentlichen erledigt das).
+  Ergebnis Startseite: 22,6 MB → 0,6 MB (1x) / 1,6 MB (Retina) / 2,7 MB (iPhone 3x).
+- **Editor spielt keine Videos** (auch keinen Zufallsschnitt): Standbild/Poster + kleines ▶. Abgespielt wird in Vorschau/live.
+
+## Zufallsschnitt (Objekttyp `random`) & externe Links
+- Nach dem Prinzip von `~/Desktop/Random-Edits-Kindlab` („Erleben"): `shared/randomcut.mjs` – zwei gestapelte `<video>`,
+  eins spielt, das andere lädt den nächsten zufälligen Clip; jeder Clip ab Anfang für 0,7–4 s. Live startet/stoppt
+  `site.js` (jetzt ES-Modul!) per IntersectionObserver; der Editor zeigt den Schnitt ebenfalls live (`startRandoms`).
+- Item: `{type:'random', dir, clips[], poster}` – Clips liegen in einem UNTERORDNER der Seite
+  (`content/pages/<id>/<dir>/`, nur MP4/WebM). Build kopiert Unterordner (außer `_…`/`.…`) mit.
+  Editor: „🎲 Zufallsschnitt aus Clip-Ordner" (Medien-Leiste) → vorhandenen Ordner wählen oder Ordner hochladen
+  (`POST /api/clip-upload`), Liste über `GET /api/clipdirs`. „↻ Clips neu einlesen" im Inspector.
+- Startseite: `index/clipsKurzfilmMitElla/` = 38 Clips aus Random-Edits-Kindlab (`public/media/clipsKurzfilmMitElla`,
+  VP9-WebM) → H.264, ohne Ton, erste 4,1 s, **960×540, CRF 25** (Ø 420 KB, 16 MB gesamt; Box live nur ~720 px breit).
+- Effizienz (2026-11-19, gemessen mit gedrosselter, GETEILTER Leitung ~300 KB/s inkl. Range, weil Fotos mitkonkurrieren):
+  Shuffle-Bag-Reihenfolge; Vorladen als Blob NACHEINANDER (nie parallel, `priority:'low'`), pausiert solange ein
+  Clip streamt; ist der nächste Clip nicht fertig → zufällig einen schon geladenen nehmen (nie warten);
+  `warm()` (site.js, 1200 px vorher) streamt den ersten Clip schon ins Wartevideo. Ergebnis: 17/17 Schnitte in 40 s,
+  Start beim Hineinscrollen 0 ms (vorher 13 Schnitte, ~28 s eingefrorenes Bild, Start 1,8 s).
+  Größter verbleibender Bremsklotz der Seite: große Fotos (bis 1,5 MB) → responsive Bildgrößen wären der nächste Schritt.
+- `item.link` darf eine externe URL sein (`https://…`) → live `target="_blank" rel="noopener"`; Inspector „🌐 Externe Webseite…".
+
+## Schutz vor KI-Training
+- `shared/aiprotect.mjs`: Liste der KI-Trainings-Crawler (`AI_BOTS`). Build schreibt `robots.txt`, `ai.txt`,
+  `.well-known/tdmrep.json`; jede Seite bekommt `<meta name="tdm-reservation" content="1">` + `robots noai, noimageai`.
+  = maschinenlesbarer Nutzungsvorbehalt nach § 44b Abs. 3 UrhG. Normale Suchmaschinen bleiben erlaubt.
+- ACHTUNG: `robots.txt`/`ai.txt`/`.well-known` wirken nur im **Domain-Stamm**. Unter `user.github.io/<repo>/`
+  (Projektseite) werden sie ignoriert → eigene Domain nutzen (oder User-Site-Repo). Die Meta-Tags wirken überall.
+- Harte Sperre auch gegen regelbrechende Bots: eigene Domain über Cloudflare (Gratis-Plan, „AI-Crawler blockieren").
+
+## Impressum
+- Seite `impressum` („Impressum & Datenschutz", inkl. KI-Nutzungsvorbehalt nach § 44b UrhG) mit eigenem Handy-Layout.
+  `document.mjs` hängt an jede andere Seite unten `<footer class="legal">` mit Link darauf (nur wenn die Seite existiert).
+
 ## Gotchas
 - Determinismus der Tinte wahren (kein `Math.random` im Pinsel).
 - Synthetische PointerEvents: `setPointerCapture` über `capture()` (try/catch).

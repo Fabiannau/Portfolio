@@ -7,10 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { paths, readSite, normalizeSite, listPageIds, readPage, listMedia, listFonts, IMG_EXT, VID_EXT } from '../shared/store.mjs';
+import { paths, readSite, normalizeSite, listPageIds, readPage, listMedia, listFonts, IMG_EXT, VID_EXT, isMediaFile } from '../shared/store.mjs';
 import { renderDocument } from '../shared/document.mjs';
 import { fontInfo, toWoff, unzip } from '../shared/fontinfo.mjs';
-import { fontFileInfo } from '../shared/store.mjs';
+import { fontFileInfo, listVariants, VAR_DIR, VAR_WIDTHS, VAR_SRC } from '../shared/store.mjs';
 import os from 'node:os';
 import { normalizePage, SCREEN } from '../shared/render.mjs';
 
@@ -231,6 +231,7 @@ async function handleUpload(req, res, id, rawName) {
       }
       if (big) { const s = 3200 / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
     }
+    ensureVariants(id); // kleinere Fassungen im Hintergrund erzeugen
     return sendJson(res, 200, { ok: true, kind, name, w, h });
   }
 
@@ -325,6 +326,83 @@ async function systemFontFiles() {
   }
   return out;
 }
+
+// ---------- Responsive Bildfassungen ----------
+// Je Bild kleinere Fassungen in mehreren Breiten. Der Browser lädt live nur die passende.
+// Qualität wird PRO BILD gewählt: WebP in steigender Qualität, bis es dem gleich groß verkleinerten Original
+// zum Verwechseln ähnlich ist (SSIM ≥ 0,97); schafft WebP das nicht (stark körnige oder schon komprimierte Fotos),
+// hochwertiges JPEG (Q90). Entscheidung wird in resp/.settings.json gemerkt.
+const SSIM_MIN = 0.97;
+let TOOLS = null;
+async function toolsOk() {
+  if (TOOLS === null) { try { await pexec('cwebp', ['-version'], { env: ENV }); await pexec('dwebp', ['-version'], { env: ENV }); TOOLS = await ffmpegOk(); } catch { TOOLS = false; } }
+  return TOOLS;
+}
+async function ssim(a, b) {
+  const r = await pexec('ffmpeg', ['-hide_banner', '-i', a, '-i', b, '-lavfi', 'ssim', '-f', 'null', '-'], { env: ENV, maxBuffer: 8e6 }).catch(e => e);
+  return Number(/All:([0-9.]+)/.exec(String(r.stderr || ''))?.[1] || 0);
+}
+async function resizedPng(src, w, w0, out) { // gleiche Verkleinerung für Referenz und Fassung (macOS sips)
+  const args = ['-s', 'format', 'png'];
+  if (w < w0) args.push('--resampleWidth', String(w));
+  await pexec('sips', [...args, src, '--out', out], { env: ENV });
+}
+async function chooseSettings(src, w0, tmp) {
+  const pw = Math.min(1440, w0);
+  const ref = path.join(tmp, 'ref.png'), t = path.join(tmp, 't.webp'), tp = path.join(tmp, 't.png');
+  await resizedPng(src, pw, w0, ref);
+  for (const q of [82, 88, 92, 95]) {
+    await pexec('cwebp', ['-quiet', '-mt', '-m', '6', '-sharp_yuv', '-q', String(q), ref, '-o', t], { env: ENV });
+    await pexec('dwebp', ['-quiet', t, '-o', tp], { env: ENV });
+    const v = await ssim(ref, tp);
+    if (v >= SSIM_MIN) return { fmt: 'webp', q, ssim: v };
+  }
+  return { fmt: 'jpg', q: 90 };
+}
+let variantQueue = Promise.resolve();
+function ensureVariants(id) { variantQueue = variantQueue.then(() => buildVariants(id)).catch(e => console.error('Fassungen', id, e.message)); return variantQueue; }
+async function buildVariants(id) {
+  if (!(await toolsOk())) return;
+  const dir = pageDir(id); if (!dir) return;
+  const vdir = path.join(dir, VAR_DIR);
+  const files = (await fs.readdir(dir, { withFileTypes: true }).catch(() => [])).filter(f => f.isFile() && VAR_SRC.test(f.name) && isMediaFile(f.name)).map(f => f.name);
+  const setFile = path.join(vdir, '.settings.json');
+  let settings = {};
+  try { settings = JSON.parse(await fs.readFile(setFile, 'utf8')); } catch {}
+  const want = new Set(['.settings.json']);
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'resp-'));
+  try {
+    for (const f of files) {
+      const src = path.join(dir, f);
+      let w0 = 0;
+      try { const { stdout } = await pexec('sips', ['-g', 'pixelWidth', src], { env: ENV }); w0 = Number(/pixelWidth: (\d+)/.exec(stdout)?.[1] || 0); } catch {}
+      if (!w0) continue;
+      const mt = (await fs.stat(src)).mtimeMs;
+      let st = settings[f];
+      if (!st || st.mt !== mt) { st = { ...(await chooseSettings(src, w0, tmp)), mt }; settings[f] = st; }
+      const top = Math.min(w0, VAR_WIDTHS[VAR_WIDTHS.length - 1]);
+      st.w0 = w0;
+      for (const w of [...VAR_WIDTHS.filter(x => x < top), top]) {
+        if (st.fmt === 'jpg' && w === w0 && /\.jpe?g$/i.test(f)) continue; // JPEG-Original in Originalbreite = beste Fassung
+        const name = `${f}-${w}.${st.fmt}`;
+        want.add(name);
+        const out = path.join(vdir, name);
+        try { if ((await fs.stat(out)).mtimeMs >= mt) continue; } catch {}
+        await fs.mkdir(vdir, { recursive: true });
+        const png = path.join(tmp, 'w.png');
+        await resizedPng(src, w, w0, png);
+        if (st.fmt === 'webp') await pexec('cwebp', ['-quiet', '-mt', '-m', '6', '-sharp_yuv', '-q', String(st.q), png, '-o', out + '.part'], { env: ENV });
+        else await pexec('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', String(st.q), png, '--out', out + '.part.jpg'], { env: ENV }).then(() => fs.rename(out + '.part.jpg', out + '.part'));
+        await fs.rename(out + '.part', out);
+      }
+    }
+  } finally { await fs.rm(tmp, { recursive: true, force: true }); }
+  for (const k of Object.keys(settings)) if (!files.includes(k)) delete settings[k];
+  if (files.length) { await fs.mkdir(vdir, { recursive: true }); await fs.writeFile(setFile, JSON.stringify(settings, null, 1)); }
+  // Fassungen gelöschter Bilder / alter Formate entfernen
+  for (const f of await fs.readdir(vdir).catch(() => [])) if (!want.has(f)) await fs.rm(path.join(vdir, f), { force: true });
+}
+async function ensureAllVariants() { for (const id of await listPageIds(P)) await ensureVariants(id); }
 
 // ---------- Veröffentlichen ----------
 function git(args) {
@@ -535,6 +613,7 @@ const server = http.createServer(async (req, res) => {
           try {
             try { await git(['remote', 'get-url', 'origin']); }
             catch { return sendJson(res, 200, { ok: false, error: 'Noch kein GitHub-Repo verbunden (origin fehlt). Siehe CLAUDE.md → „Veröffentlichen".' }); }
+            await ensureAllVariants(); // Bildfassungen aktuell?
             const big = await tooLargeFiles();
             if (big.length) return sendJson(res, 200, { ok: false, error: `Zu große Dateien (GitHub max. 100 MB): ${big.join(', ')}` });
             await git(['add', '-A']);
@@ -563,7 +642,7 @@ const server = http.createServer(async (req, res) => {
         const id = safeId(rest.slice(0, -5));
         const ids = await listPageIds(P);
         if (!ids.includes(id)) return send(res, 404, 'Seite nicht gefunden');
-        return send(res, 200, renderDocument(await readPage(P, id), await readSite(P), await listFonts(P), ids), 'text/html; charset=utf-8');
+        return send(res, 200, renderDocument(await readPage(P, id), await readSite(P), await listFonts(P), ids, await listVariants(P, id)), 'text/html; charset=utf-8');
       }
       return send(res, 404, 'Not found');
     }
@@ -582,6 +661,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 await ensureIndex();
+ensureAllVariants(); // im Hintergrund: fehlende Bildfassungen erzeugen
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`Portfolio-Editor läuft:  http://127.0.0.1:${PORT}/`);
   console.log(`Vorschau:                http://127.0.0.1:${PORT}/preview/`);

@@ -34,6 +34,30 @@
     "index": {
       "x": 108,
       "y": -9
+    },
+    "fromnaturetoculturetonature": {
+      "x": 628,
+      "y": -9
+    },
+    "impressum": {
+      "x": -355,
+      "y": -11
+    },
+    "notitle": {
+      "x": 628,
+      "y": 291
+    },
+    "sitzordnung": {
+      "x": 628,
+      "y": 591
+    },
+    "mixam": {
+      "x": 628,
+      "y": 891
+    },
+    "myopia": {
+      "x": 1148,
+      "y": 891
     }
   }
 }
