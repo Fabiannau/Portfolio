@@ -1,0 +1,47 @@
+/* Gemeinsame Darstellung der Seiten – Live-Seite, Vorschau UND Editor nutzen diese Datei. */
+.pg {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  /* KEIN transform/contain/container-type hier: sonst blieben fixierte Elemente nicht am Bildschirm stehen */
+}
+.pg .it {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.pg .it-image, .pg .it-video, .pg .it-draw { overflow: hidden; }
+.pg .it-image img, .pg .it-video video, .pg .it-video img, .pg .it-draw img, .pg .it-draw canvas {
+  position: absolute;
+  display: block;
+  object-fit: fill;
+  max-width: none;
+}
+.pg .it-text { white-space: pre-wrap; overflow-wrap: break-word; }
+.pg .ink-layer { position: absolute; inset: 0; z-index: 100000; pointer-events: none; } /* Handschrift über allen Elementen */
+.pg .ink { position: absolute; left: 0; width: 100%; display: block; }
+.pg a.it { cursor: pointer; transition: opacity .25s, transform .25s; }
+.pg a.it:hover { opacity: .88; }
+.pg .it.pinned { position: fixed; } /* am Bildschirm verankert (it.pin) */
+.pg .it-draw canvas { width: 100%; height: 100%; left: 0; top: 0; }
+/* Szenen-Video: kleiner Ton-Knopf (Klick aufs ganze Video schaltet ebenfalls) */
+.pg .it-video:has(video[data-scene]) { cursor: pointer; }
+.pg .it-video .snd {
+  position: absolute; right: 2.5%; bottom: 3.5%; z-index: 2;
+  width: 38px; height: 38px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  background: rgba(20,19,17,.55) no-repeat center / 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H2v6h4l5 4z' fill='white'/%3E%3Cpath d='M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14'/%3E%3C/svg%3E");
+  opacity: .8; transition: opacity .2s, background-color .2s;
+}
+.pg .it-video .snd:hover { opacity: 1; background-color: rgba(20,19,17,.8); }
+.pg .it-video.muted .snd {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 5 6 9H2v6h4l5 4z' fill='white'/%3E%3Cpath d='m22 9-6 6M16 9l6 6'/%3E%3C/svg%3E");
+}
+/* Zufallsschnitt: zwei Videos wechseln sich ab, Standbild bis zum ersten Schnitt */
+.pg .it-random { overflow: hidden; background: #000; }
+.pg .it-random video.rc, .pg .it-random .rc-poster { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.pg .it-random video.rc { opacity: 0; }
+.pg .it-random video.rc.front { opacity: 1; }

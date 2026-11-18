@@ -1,0 +1,7 @@
+# Build-Ergebnis (baut GitHub selbst)
+dist/
+# Originale (ProRes/HEIC/RAW-große Dateien) bleiben nur lokal – veröffentlicht werden die optimierten Versionen
+content/pages/*/_originals/
+*.part.*
+.DS_Store
+*.log

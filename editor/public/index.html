@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portfolio-Editor</title>
+  <link rel="stylesheet" href="/shared/site.css" />
+  <link rel="stylesheet" href="/editor/editor.css" />
+  <style id="fontFaces"></style>
+</head>
+<body data-view="page" data-tool="select" data-mode="desktop">
+  <header class="toolbar">
+    <div class="group">
+      <button id="btnGraph" class="viewbtn" title="Übersicht aller Seiten & Verbindungen (G)">◫ Übersicht</button>
+      <select id="pageSelect" title="Seite wählen"></select>
+      <button id="btnNewPage" title="Neue leere Seite">＋ Seite</button>
+    </div>
+
+    <div class="seg page-only" id="modeSeg" title="Ansicht wechseln (M) – das Handy-Layout ist eine eigene Anordnung derselben Inhalte">
+      <button data-mode="desktop" class="active">🖥 Desktop</button>
+      <button data-mode="mobile">📱 Handy <span id="mBadge" class="badge-n" hidden title="Neues vom Desktop, das aufs Handy noch nicht platziert ist"></span></button>
+    </div>
+
+    <div class="sep page-only"></div>
+
+    <div class="group page-only" id="tools">
+      <button data-tool="select" class="tool active" title="Auswählen & bewegen (V)">↖</button>
+      <button data-tool="brush" class="tool" title="Pinsel (B)">✎ Pinsel</button>
+      <button data-tool="eraser" class="tool" title="Radierer (E)">⌫</button>
+      <button data-tool="lasso" class="tool" title="Lasso: Gemaltes auswählen, verschieben, skalieren (L)">⬚ Lasso</button>
+      <button data-tool="text" class="tool" title="Textbox setzen (T)">T Text</button>
+    </div>
+
+    <div class="group page-only">
+      <input type="range" id="brushSize" min="2" max="160" value="22" title="Pinselgröße ( [ / ] )" />
+      <span id="brushSizeVal" class="val">22</span>
+    </div>
+
+    <div class="group page-only">
+      <button id="btnMedia" title="Foto oder Video hinzufügen (oder einfach auf die Fläche ziehen)">＋ Foto/Video</button>
+      <button id="btnPin" title="Ausgewähltes Objekt am Bildschirm fixieren (F)" disabled>📌 Fixieren</button>
+    </div>
+
+    <div class="group page-only">
+      <button id="undo" title="Rückgängig (⌘Z)">↩︎</button>
+      <button id="redo" title="Wiederholen (⌘⇧Z)">↪︎</button>
+    </div>
+
+    <div class="group page-only">
+      <button id="zoomOut" title="Verkleinern (⌘ + Scrollen)">−</button>
+      <button id="zoomFit" class="val-btn" title="Auf Breite einpassen (⌘0)">100%</button>
+      <button id="zoomIn" title="Vergrößern">+</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="group">
+      <span id="status" class="status"></span>
+      <a id="previewLink" href="/preview/index.html" target="_blank" class="ghost" title="Vorschau genau wie die Live-Seite">Vorschau ↗</a>
+      <button id="save" class="primary" title="Speichern (⌘S) – speichert auch automatisch">Speichern</button>
+      <button id="publish" class="publish" title="Speichern & live stellen (⌘⇧P)">⤴ Veröffentlichen</button>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*,video/*,.heic,.heif,.mov,.m4v" multiple hidden />
+  </header>
+
+  <!-- Seiten-Ansicht -->
+  <main class="pageview" id="pageView">
+    <div class="scroller" id="scroller">
+      <div class="extend top" id="extTop" title="Klicken = +1 Bildschirm oben · Ziehen = frei">
+        <span>▲ Fläche oben erweitern</span><small>klicken = +1 Bildschirm · ziehen ↕ = frei</small>
+      </div>
+      <div class="stage pg" id="stage">
+        <div class="items" id="items"></div>
+        <div class="tiles" id="tiles"></div>
+        <div class="input" id="input"></div>
+        <svg class="ovl" id="ovl" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="handles" id="handles"></div>
+        <div class="lasso-bar" id="lassoBar" hidden><button id="lassoGroup" title="Auswahl zu einem festen Objekt machen (⌘G)">▣ Als Objekt</button></div>
+      </div>
+      <div class="extend bottom" id="extBottom" title="Klicken = +1 Bildschirm unten · Ziehen = frei">
+        <span>▼ unten erweitern</span>
+      </div>
+    </div>
+    <div class="hud" id="hud" title="Stift & Druck">–</div>
+    <div class="pressure-hint" id="pressureHint" hidden>
+      Stift erkannt, aber <b>kein Druck</b> (typisch für Safari).<br>
+      Öffne den Editor in <b>Firefox</b> – dort funktioniert der Stiftdruck.
+      <button id="hintClose" title="Schließen">×</button>
+    </div>
+    <div class="pin-guide" id="pinGuide" hidden><div class="pg-edge" id="pgEdge"></div><div class="pg-line" id="pgLine"></div><div class="pg-label" id="pgLabel"></div></div>
+    <div class="drop-hint" id="dropHint">Fotos, Videos oder Schriften hier ablegen</div>
+  </main>
+
+  <!-- Übersicht (Node-Ansicht) -->
+  <main class="graphview" id="graphView" hidden>
+    <div class="world" id="world">
+      <svg class="wires" id="wires" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4f8cff" />
+          </marker>
+        </defs>
+        <g id="wireG"></g>
+      </svg>
+      <div id="nodes"></div>
+    </div>
+    <div class="graph-bar">
+      <button id="gFit" title="Alles zeigen">⤢ Alles zeigen</button>
+      <button id="gNew" title="Neue Seite hier">＋ Seite</button>
+      <span class="graph-hint">Leere Fläche ziehen = schieben · ⌘/Pinch + Scrollen = Zoom · Kopf ziehen = Seite verschieben · Doppelklick = öffnen · Rechtsklick = Menü</span>
+    </div>
+  </main>
+
+  <aside class="side" id="side">
+    <div id="inspector" class="inspector"></div>
+    <div class="media-panel page-only">
+      <div class="side-title">Medien dieser Seite <button id="btnMedia2" class="mini-btn" title="Hochladen">＋</button></div>
+      <div class="side-hint">Klicken oder auf die Fläche ziehen zum Platzieren. Videos werden automatisch hochwertig fürs Web umgewandelt.</div>
+      <div id="mediaGrid" class="media-grid"></div>
+      <button id="btnRandom" class="wide" title="Mehrere Clips, live in zufälliger Reihenfolge geschnitten">🎲 Zufallsschnitt aus Clip-Ordner</button>
+      <button id="btnVideoUrl" class="wide" title="Video, das extern liegt (z. B. Cloudflare R2 / Bunny), per URL einbetten">＋ Video per URL</button>
+    </div>
+  </aside>
+
+  <div class="ctxmenu" id="ctxmenu" hidden></div>
+
+  <script type="module" src="/editor/editor.js"></script>
+</body>
+</html>

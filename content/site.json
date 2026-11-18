@@ -1,0 +1,43 @@
+{
+  "title": "Portfolio",
+  "styles": [
+    {
+      "id": "titel",
+      "name": "Titel",
+      "props": {
+        "size": 150,
+        "weight": 600,
+        "lh": 1.05,
+        "ls": -0.01
+      }
+    },
+    {
+      "id": "text",
+      "name": "Fließtext",
+      "props": {
+        "size": 40,
+        "lh": 1.45
+      }
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "props": {
+        "size": 26,
+        "weight": 500,
+        "upper": true,
+        "ls": 0.08
+      }
+    }
+  ],
+  "graph": {
+    "index": {
+      "x": 108,
+      "y": -9
+    },
+    "impressum": {
+      "x": -520,
+      "y": 0
+    }
+  }
+}
