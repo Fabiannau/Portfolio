@@ -1,5 +1,5 @@
 {
-  "title": "Portfolio",
+  "title": "fabiannausner",
   "styles": [
     {
       "id": "titel",
@@ -34,10 +34,6 @@
     "index": {
       "x": 108,
       "y": -9
-    },
-    "impressum": {
-      "x": -520,
-      "y": 0
     }
   }
 }

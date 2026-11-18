@@ -130,39 +130,16 @@ content/pages/<id>/
 - GitHub: **max. 100 MB pro Datei** → Publish bricht mit klarer Meldung ab, wenn eine Datei > 95 MB ist.
   Lange/4K-Videos: extern (Cloudflare R2 / Bunny) hosten und per „＋ Video per URL" einbetten.
 
-## Veröffentlichen (noch NICHT eingerichtet)
-Gleiches Verfahren wie bei Photowebsite (siehe dort CLAUDE.md, inkl. SSH-Alias-Falle):
-1. Leeres Public-Repo anlegen. 2. `git remote add origin git@github-album:<account>/<repo>.git` (Alias-Host, falls
-   gleicher Account wie das Fotoalbum). 3. Settings → Pages → **Source = „GitHub Actions"**. 4. Im Editor „⤴ Veröffentlichen".
-Workflow `.github/workflows/deploy.yml` führt nur `node build.mjs` aus (kein `npm ci`).
-
-## Zufallsschnitt (Objekttyp `random`) & externe Links
-- Nach dem Prinzip von `~/Desktop/Random-Edits-Kindlab` („Erleben"): `shared/randomcut.mjs` – zwei gestapelte `<video>`,
-  eins spielt, das andere lädt den nächsten zufälligen Clip; jeder Clip ab Anfang für 0,7–4 s. Live startet/stoppt
-  `site.js` (jetzt ES-Modul!) per IntersectionObserver; der Editor zeigt den Schnitt ebenfalls live (`startRandoms`).
-- Item: `{type:'random', dir, clips[], poster}` – Clips liegen in einem UNTERORDNER der Seite
-  (`content/pages/<id>/<dir>/`, nur MP4/WebM). Build kopiert Unterordner (außer `_…`/`.…`) mit.
-  Editor: „🎲 Zufallsschnitt aus Clip-Ordner" (Medien-Leiste) → vorhandenen Ordner wählen oder Ordner hochladen
-  (`POST /api/clip-upload`), Liste über `GET /api/clipdirs`. „↻ Clips neu einlesen" im Inspector.
-- Startseite: `index/clipsKurzfilmMitElla/` = 38 Clips aus Random-Edits-Kindlab (`public/media/clipsKurzfilmMitElla`,
-  VP9-WebM), für iPhone-Kompatibilität in H.264 umgewandelt, ohne Ton und auf die ersten 4,2 s gekürzt (35 MB).
-- `item.link` darf eine externe URL sein (`https://…`) → live `target="_blank" rel="noopener"`; Inspector „🌐 Externe Webseite…".
-
-## Schutz vor KI-Training
-- `shared/aiprotect.mjs`: Liste der KI-Trainings-Crawler (`AI_BOTS`). Build schreibt `robots.txt`, `ai.txt`,
-  `.well-known/tdmrep.json`; jede Seite bekommt `<meta name="tdm-reservation" content="1">` + `robots noai, noimageai`.
-  = maschinenlesbarer Nutzungsvorbehalt nach § 44b Abs. 3 UrhG. Normale Suchmaschinen bleiben erlaubt.
-- ACHTUNG: `robots.txt`/`ai.txt`/`.well-known` wirken nur im **Domain-Stamm**. Unter `user.github.io/<repo>/`
-  (Projektseite) werden sie ignoriert → eigene Domain nutzen (oder User-Site-Repo). Die Meta-Tags wirken überall.
-- Harte Sperre auch gegen regelbrechende Bots: eigene Domain über Cloudflare (Gratis-Plan, „AI-Crawler blockieren").
-
-## Impressum & Domain
-- Seite `impressum` („Impressum & Datenschutz", inkl. KI-Nutzungsvorbehalt nach § 44b UrhG) mit eigenem Handy-Layout.
-  `document.mjs` hängt an jede andere Seite unten `<footer class="legal">` mit Link darauf (nur wenn die Seite existiert).
-- Domain `fabiannausner.de`: DNS bei **Strato** (rzone.de), zeigt bereits auf GitHub Pages (Apex A 185.199.108.153,
-  `www` CNAME → `fabiannau.github.io`, GitHub-Konto „fabiannau", dort läuft Stand 2026-11-18 noch eine ältere Seite).
-  Umzug = Custom Domain im alten Repo entfernen, im neuen Repo eintragen (Settings → Pages). Bei Deploy per GitHub
-  Actions wird eine CNAME-Datei ignoriert → Domain NUR in den Repo-Einstellungen setzen. Kein Cloudflare (Nutzerwunsch).
+## Veröffentlichen — LIVE seit 2026-11-19
+- **Live:** https://fabiannausner.de (http und www leiten auf https://fabiannausner.de um)
+- **Repo:** `Fabiannau/Portfolio` (GitHub-Konto „Fabiannau"), Branch `main`, Remote `git@github-fabiannau:Fabiannau/Portfolio.git`
+  über SSH-Alias `github-fabiannau` (`~/.ssh/id_ed25519_fabiannau`, IdentitiesOnly) – der Standardschlüssel gehört zu FabianN1111!
+- Pages-Quelle = **GitHub Actions** (`.github/workflows/deploy.yml` → `node build.mjs` → `dist`). Custom Domain in den
+  Repo-Settings (keine CNAME-Datei nötig). DNS bei Strato unverändert.
+- Editor-Knopf „⤴ Veröffentlichen" = git add/commit/push → Action baut → live nach ~1–2 Min.
+- Die vorherige Seite („Fabian's Website", schlichtes HTML) steckt in der Git-Geschichte (Commit `2d4b5a0`, das Portfolio
+  wurde darauf aufgesetzt, kein Force-Push) und liegt zusätzlich in `~/Desktop/Backup-alte-Website-fabiannausner.de-2026-11-19/`.
+- Hinweis „Large files detected" beim Push = nur Warnung (> 50 MB); harte Grenze 100 MB pro Datei.
 
 ## Gotchas
 - Determinismus der Tinte wahren (kein `Math.random` im Pinsel).
