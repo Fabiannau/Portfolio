@@ -2149,6 +2149,7 @@ const onItemCtx = e => {
       : it.type === 'draw' ? [{ label: '✎ In Striche auflösen', fn: ungroupDraw }]
       : [{ label: '✂ Zuschneiden', fn: enterCrop }]),
     { label: '🔗 Neue Projektseite verlinken…', fn: () => setLink('__new') },
+    { label: '🌐 Mit Webseite verlinken…', fn: () => setLink('__url') },
     ...(it.link ? [{ label: 'Verlinkte Seite öffnen →', fn: () => openPage(it.link) }, { label: 'Link entfernen', fn: () => setLink('') }] : []),
     '-',
     ...(it.pin ? [{ label: '📌 Fixierung lösen (scrollt mit)', fn: () => setPin('') }]

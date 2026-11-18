@@ -10,6 +10,11 @@ import { randomCut } from './randomcut.mjs';
     es.forEach(function (e) { var rc = randomCut(e.target); if (e.isIntersecting) rc.start(); else rc.stop(); });
   }, { rootMargin: '150px 0px' });
   els.forEach(function (el) { io.observe(el); });
+  // schon weit vorher (1200 px) mit dem Vorladen der ersten Clips beginnen
+  var warmIo = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { randomCut(e.target).warm(); warmIo.unobserve(e.target); } });
+  }, { rootMargin: '1200px 0px' });
+  els.forEach(function (el) { warmIo.observe(el); });
 })();
 
 // Live-Seite: Video-Verhalten.
