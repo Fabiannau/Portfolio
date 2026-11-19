@@ -28,6 +28,23 @@
         "upper": true,
         "ls": 0.08
       }
+    },
+    {
+      "id": "untertitel",
+      "name": "Untertitel",
+      "props": {
+        "font": "Sans",
+        "size": 40,
+        "weight": 600,
+        "color": "#141311",
+        "lh": 1.45,
+        "ls": 0,
+        "align": "left",
+        "italic": false,
+        "upper": false,
+        "bg": "",
+        "pad": 0
+      }
     }
   ],
   "graph": {
