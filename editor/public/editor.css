@@ -322,3 +322,12 @@ body[data-mode="mobile"] .extend small { display: none; }
   background: rgba(0,0,0,.55); padding: 4px 6px; border-radius: 4px; pointer-events: none;
 }
 .items .it-random::before { content: "🎲 Zufallsschnitt"; }
+
+/* Galerie-Bilder im Editor */
+.items .it-image[data-gal]::before {
+  content: "▦"; position: absolute; left: 6px; top: 6px; z-index: 3; font-size: 12px; line-height: 1; color: #fff;
+  background: rgba(79,140,255,.9); padding: 3px 5px; border-radius: 4px; pointer-events: none;
+}
+/* Dreh-Griff über der Auswahl */
+.handle.rot { width: 14px; height: 14px; cursor: grab; background: var(--accent); border-color: #fff; }
+.handle.rot:active { cursor: grabbing; }

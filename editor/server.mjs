@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 import { paths, readSite, normalizeSite, listPageIds, readPage, listMedia, listFonts, IMG_EXT, VID_EXT, isMediaFile } from '../shared/store.mjs';
 import { renderDocument } from '../shared/document.mjs';
 import { fontInfo, toWoff, unzip } from '../shared/fontinfo.mjs';
-import { fontFileInfo, listVariants, VAR_DIR, VAR_WIDTHS, VAR_SRC } from '../shared/store.mjs';
+import { fontFileInfo, listVariants, VAR_DIR, VAR_WIDTHS, VAR_SRC, readGalleryUi, GAL_ROLES } from '../shared/store.mjs';
 import os from 'node:os';
 import { normalizePage, SCREEN } from '../shared/render.mjs';
 
@@ -36,6 +36,7 @@ const IMG_IN = new Set([...IMG_EXT, '.heic', '.heif', '.tif', '.tiff']);
 const VID_IN = new Set([...VID_EXT, '.mov', '.m4v', '.mkv', '.avi', '.mxf']);
 
 // ---------- Helfer ----------
+const newVer = () => Date.now().toString(36);
 function safeId(id) {
   return String(id || '').toLowerCase().trim()
     .replace(/[äöüß]/g, c => ({ ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' }[c]))
@@ -595,6 +596,21 @@ const server = http.createServer(async (req, res) => {
           await pipeline(req, createWriteStream(path.join(dir, sub, safeBase(name) + ext)));
           return sendJson(res, 200, { ok: true, dir: sub });
         }
+        case 'GET /api/gallery-ui': return sendJson(res, 200, { ui: await readGalleryUi(P) });
+        case 'POST /api/gallery-ui': { // Handschrift-Objekt als Galerie-Symbol übernehmen
+          const b = await readJson(req);
+          const dir = pageDir(safeId(b.page)), role = String(b.role), item = String(b.item || '');
+          if (!dir || !GAL_ROLES.includes(role) || !/^[a-z0-9]{1,24}$/.test(item)) return sendJson(res, 400, { error: 'Ungültig' });
+          const src = path.join(dir, `draw_${item}.png`);
+          if (!(await exists(src))) return sendJson(res, 400, { error: 'Das Objekt ist noch nicht gespeichert – kurz warten und nochmal' });
+          const uidir = path.join(P.content, 'ui');
+          await fs.mkdir(uidir, { recursive: true });
+          await fs.copyFile(src, path.join(uidir, `gal-${role}.png`));
+          const ui = await readGalleryUi(P);
+          ui[role] = { w: Math.round(+b.w || 100), h: Math.round(+b.h || 100), v: newVer() };
+          await fs.writeFile(path.join(uidir, 'gallery.json'), JSON.stringify(ui, null, 2));
+          return sendJson(res, 200, { ok: true, ui });
+        }
         case 'POST /api/upload':
           return handleUpload(req, res, safeId(q('id')), q('name') || '');
         case 'GET /api/jobs':
@@ -637,12 +653,13 @@ const server = http.createServer(async (req, res) => {
       const rest = pathname.slice('/preview/'.length);
       if (['site.css', 'site.js', 'randomcut.mjs'].includes(rest)) return serveFile(req, res, path.join(SHARED, rest));
       if (rest.startsWith('media/')) { const fp = within(P.pages, rest.slice(6)); return fp ? serveFile(req, res, fp) : send(res, 403, 'Forbidden'); }
+      if (rest.startsWith('ui/')) { const fp = within(path.join(P.content, 'ui'), rest.slice(3)); return fp ? serveFile(req, res, fp) : send(res, 403, 'Forbidden'); }
       if (rest.startsWith('fonts/')) { const fp = within(P.fonts, rest.slice(6)); return fp ? serveFile(req, res, fp) : send(res, 403, 'Forbidden'); }
       if (rest.endsWith('.html')) {
         const id = safeId(rest.slice(0, -5));
         const ids = await listPageIds(P);
         if (!ids.includes(id)) return send(res, 404, 'Seite nicht gefunden');
-        return send(res, 200, renderDocument(await readPage(P, id), await readSite(P), await listFonts(P), ids, await listVariants(P, id)), 'text/html; charset=utf-8');
+        return send(res, 200, renderDocument(await readPage(P, id), await readSite(P), await listFonts(P), ids, await listVariants(P, id), await readGalleryUi(P)), 'text/html; charset=utf-8');
       }
       return send(res, 404, 'Not found');
     }

@@ -1,6 +1,87 @@
 // Live-Seite: Video-Verhalten. (ES-Modul)
 import { randomCut } from './randomcut.mjs';
 
+// · Galerie: Klick auf ein verbundenes Bild -> Großansicht mit Karussell über alle Bilder derselben Galerie
+(function () {
+  if (!document.querySelector('[data-gal]')) return;
+  var lb = null, list = [], idx = 0, img = null, counter = null, viaHistory = false;
+  // passende Bildquelle: die responsiven Fassungen mit sizes=100vw (scharf auf jedem Bildschirm)
+  function sourceOf(el) {
+    var s = el.querySelector('source'), i = el.querySelector('img');
+    return { srcset: (s && s.getAttribute('srcset')) || (i && i.getAttribute('srcset')) || '', src: i ? i.getAttribute('src') : '', alt: i ? i.alt : '' };
+  }
+  function visibleGroup(id) { // Reihenfolge = Anordnung auf der sichtbaren Fassung (Desktop oder Handy)
+    return [].slice.call(document.querySelectorAll('div.it[data-gal="' + id + '"]'))
+      .filter(function (el) { return el.offsetParent !== null || getComputedStyle(el).position === 'fixed'; })
+      .map(function (el) { var r = el.getBoundingClientRect(); return { el: el, t: r.top + scrollY, l: r.left }; })
+      .sort(function (a, b) { return Math.abs(a.t - b.t) > 40 ? a.t - b.t : a.l - b.l; })
+      .map(function (o) { return o.el; });
+  }
+  function make(i) {
+    var s = sourceOf(list[i]), im = new Image();
+    if (s.srcset) { im.srcset = s.srcset; im.sizes = '100vw'; }
+    im.src = s.src; im.alt = s.alt; im.decoding = 'async';
+    return im;
+  }
+  function show(i, dir) {
+    idx = (i + list.length) % list.length;
+    var next = make(idx);
+    var stage = lb.querySelector('.lb-stage');
+    if (img) { var old = img; old.classList.add('out'); setTimeout(function () { old.remove(); }, 200); }
+    next.style.position = 'absolute'; next.classList.add('out');
+    if (dir) next.style.transform = 'translateX(' + (dir * 24) + 'px)';
+    stage.appendChild(next); img = next;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { next.classList.remove('out'); next.style.transform = ''; }); });
+    counter.textContent = list.length > 1 ? (idx + 1) + ' / ' + list.length : '';
+    [idx + 1, idx - 1].forEach(function (j) { if (list.length > 1) make((j + list.length) % list.length); }); // Nachbarn vorladen
+  }
+  function open(el) {
+    list = visibleGroup(el.dataset.gal);
+    if (!list.length) return;
+    lb = document.createElement('div');
+    lb.className = 'lb'; lb.setAttribute('role', 'dialog'); lb.setAttribute('aria-modal', 'true'); lb.setAttribute('aria-label', 'Großansicht');
+    lb.innerHTML = '<div class="lb-stage"></div><button class="lb-x" aria-label="Schließen">×</button>' +
+      (list.length > 1 ? '<button class="lb-prev" aria-label="Vorheriges Bild">‹</button><button class="lb-next" aria-label="Nächstes Bild">›</button>' : '') +
+      '<div class="lb-n" aria-live="polite"></div>';
+    counter = lb.querySelector('.lb-n');
+    document.body.appendChild(lb);
+    document.documentElement.style.overflow = 'hidden';
+    img = null; show(list.indexOf(el), 0);
+    requestAnimationFrame(function () { lb.classList.add('on'); });
+    lb.querySelector('.lb-x').focus();
+    lb.addEventListener('click', function (e) {
+      if (e.target.closest('.lb-next')) return show(idx + 1, 1);
+      if (e.target.closest('.lb-prev')) return show(idx - 1, -1);
+      if (e.target.closest('.lb-x') || e.target === lb || e.target.classList.contains('lb-stage')) return close();
+    });
+    var x0 = null; // Wischen
+    lb.addEventListener('pointerdown', function (e) { x0 = e.clientX; });
+    lb.addEventListener('pointerup', function (e) {
+      if (x0 === null) return; var dx = e.clientX - x0; x0 = null;
+      if (Math.abs(dx) > 50 && list.length > 1) show(idx + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+    });
+    history.pushState({ lb: 1 }, ''); viaHistory = true; // Zurück-Geste schließt die Großansicht
+  }
+  function close(fromPop) {
+    if (!lb) return;
+    var el = lb; lb = null; img = null;
+    el.classList.remove('on'); setTimeout(function () { el.remove(); }, 250);
+    document.documentElement.style.overflow = '';
+    if (!fromPop && viaHistory) { viaHistory = false; history.back(); }
+  }
+  addEventListener('popstate', function () { if (lb) { viaHistory = false; close(true); } });
+  addEventListener('keydown', function (e) {
+    if (!lb) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowRight' && list.length > 1) show(idx + 1, 1);
+    else if (e.key === 'ArrowLeft' && list.length > 1) show(idx - 1, -1);
+  });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('div.it[data-gal]');
+    if (el && !lb) { e.preventDefault(); open(el); }
+  });
+})();
+
 // · E-Mail-Adressen entschlüsseln (stehen verschlüsselt im HTML, damit Adress-Sammler sie nicht finden)
 document.querySelectorAll('.em[data-em]').forEach(function (el) {
   var addr = el.dataset.em.split('.').map(function (n) { return String.fromCharCode(n - 3); }).join('');

@@ -3,7 +3,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { paths, readSite, listPageIds, readPage, listFonts, isMediaFile, listVariants } from './shared/store.mjs';
+import { paths, readSite, listPageIds, readPage, listFonts, isMediaFile, listVariants, readGalleryUi } from './shared/store.mjs';
 import { renderDocument, pageFile } from './shared/document.mjs';
 import { robotsTxt, aiTxt, tdmrepJson } from './shared/aiprotect.mjs';
 
@@ -14,13 +14,14 @@ const DIST = path.join(ROOT, 'dist');
 const site = await readSite(P);
 const ids = await listPageIds(P);
 const fonts = await listFonts(P);
+const galleryUi = await readGalleryUi(P);
 
 await fs.rm(DIST, { recursive: true, force: true });
 await fs.mkdir(path.join(DIST, 'media'), { recursive: true });
 
 for (const id of ids) {
   const page = await readPage(P, id);
-  await fs.writeFile(path.join(DIST, decodeURIComponent(pageFile(id))), renderDocument(page, site, fonts, ids, await listVariants(P, id)));
+  await fs.writeFile(path.join(DIST, decodeURIComponent(pageFile(id))), renderDocument(page, site, fonts, ids, await listVariants(P, id), galleryUi));
   const src = path.join(P.pages, id), dst = path.join(DIST, 'media', id);
   await fs.mkdir(dst, { recursive: true });
   const keepInk = new Set((page.ink || []).map(k => `ink_${k}.png`));
@@ -48,6 +49,8 @@ if (fonts.length) {
   for (const f of fonts) await fs.copyFile(path.join(P.fonts, f.file), path.join(DIST, 'fonts', f.file));
 }
 await fs.writeFile(path.join(DIST, '.nojekyll'), '');
+// Galerie-Symbole
+try { await fs.cp(path.join(P.content, 'ui'), path.join(DIST, 'ui'), { recursive: true, filter: f => !f.endsWith('.json') }); } catch {}
 // Nutzungsvorbehalt gegen KI-Training (maschinenlesbar)
 await fs.writeFile(path.join(DIST, 'robots.txt'), robotsTxt());
 await fs.writeFile(path.join(DIST, 'ai.txt'), aiTxt());

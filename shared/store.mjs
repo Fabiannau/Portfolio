@@ -111,3 +111,9 @@ export async function listVariants(P, id) {
   for (const v of out.values()) v.sort((a, b) => a.w - b.w);
   return out;
 }
+
+// ---- Galerie-Symbole (eigene Handschrift) – content/ui/gal-<rolle>.png + gallery.json {rolle: {w,h,v}} ----
+export const GAL_ROLES = ['prev', 'next', 'close'];
+export async function readGalleryUi(P) {
+  try { return JSON.parse(await fs.readFile(path.join(P.content, 'ui', 'gallery.json'), 'utf8')); } catch { return {}; }
+}

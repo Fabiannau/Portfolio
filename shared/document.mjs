@@ -14,7 +14,16 @@ export function fontFaceCSS(fonts, prefix = '') {
 
 export const pageFile = id => (id === 'index' ? 'index.html' : `${encodeURIComponent(id)}.html`);
 
-export function renderDocument(page, site, fonts, ids, variants = null) {
+// Galerie-Symbole: Größe wie Handschrift auf der Seite (Einheiten -> Bildschirmbreite), mit Mindest-/Höchstgröße
+function galleryCSS(ui) {
+  if (!ui) return '';
+  const cls = { prev: '.lb .lb-prev', next: '.lb .lb-next', close: '.lb .lb-x' };
+  return Object.entries(ui).filter(([r]) => cls[r]).map(([r, g]) =>
+    `${cls[r]}{font-size:0;opacity:1;background:url("ui/gal-${r}.png?v=${encodeURIComponent(g.v || '')}") center/contain no-repeat;` +
+    `width:clamp(34px,calc(${+g.w} * var(--vwn,19.2) * 100px / 2560),110px);height:auto;aspect-ratio:${+g.w}/${+g.h}}`).join('\n');
+}
+
+export function renderDocument(page, site, fonts, ids, variants = null, galleryUi = null) {
   const known = new Set(ids);
   const opt = {
     variants: variants ? (pid, src) => variants.get(src) : null,
@@ -46,6 +55,7 @@ function v(){d.style.setProperty('--vwn',d.clientWidth/100)}v();addEventListener
 <style>
 ${fontFaceCSS(fonts)}
 html,body{margin:0;background:${esc(bg)}}
+${galleryCSS(galleryUi)}
 .legal{padding:28px 16px 34px;text-align:center;font:13px/1.4 -apple-system,system-ui,sans-serif}
 .legal a{color:#141311;opacity:.55;text-decoration:none}.legal a:hover{opacity:1;text-decoration:underline}
 .pg-m{display:none}

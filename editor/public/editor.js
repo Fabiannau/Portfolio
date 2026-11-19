@@ -551,7 +551,10 @@ function syncItem(i) {
   const el = itemEl(i); if (!el) return;
   const q = posVarParts(L.items[i]);
   el.style.left = q.left; el.style.top = q.top || ''; el.style.bottom = q.bottom || ''; el.style.width = q.width;
+  if (L.items[i].type === 'text') { const tx = boxEl(el); if (tx !== el) tx.style.width = L.items[i].w + 'px'; } // innerer Textblock trägt die Breite
   if (q.height) el.style.height = q.height;
+  const r = +L.items[i].rot || 0;
+  if (r) el.style.setProperty('--r', r + 'deg'); else el.style.removeProperty('--r');
 }
 function measureTexts() {
   if (!page || !scale) return;
@@ -622,17 +625,26 @@ function renderHandles() {
   const it = L.items[sel], el = itemEl(sel);
   if (!el) return;
   const host = handlesEl;
+  // Rahmen in Objekt-Richtung: Mitte = Mitte des (gedrehten) Umrisses, Größe = ungedrehte Maße
   const r = rectOf(el), st = stage.getBoundingClientRect();
-  const Lx = r.left - st.left, T = r.top - st.top, Wd = r.width, Hd = r.height;
+  const cx = (r.left + r.right) / 2 - st.left, cy = (r.top + r.bottom) / 2 - st.top;
+  const Wd = it.w * scale, Hd = itemBox(sel).h * scale;
+  const rot = +it.rot || 0, th = rot * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
+  const at = (lx, ly) => [cx + lx * cs - ly * sn, cy + lx * sn + ly * cs]; // Punkt im Objekt -> Bildschirm
   const box = document.createElement('div');
   box.className = 'selbox' + (it.pin ? ' pinned' : '');
-  Object.assign(box.style, { left: Lx + 'px', top: T + 'px', width: Wd + 'px', height: Hd + 'px' });
+  Object.assign(box.style, { left: cx - Wd / 2 + 'px', top: cy - Hd / 2 + 'px', width: Wd + 'px', height: Hd + 'px', transform: rot ? `rotate(${rot}deg)` : '' });
   host.appendChild(box);
-  const hs = it.type === 'text' ? [['w', 0, 0.5], ['e', 1, 0.5]] : [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]];
+  const hs = it.type === 'text' ? [['w', -1, 0], ['e', 1, 0]] : [['nw', -1, -1], ['ne', 1, -1], ['se', 1, 1], ['sw', -1, 1]];
+  const ROT_GAP = 24;
+  hs.push(['rot', 0, -1]);
   for (const [c, fx, fy] of hs) {
     const h = document.createElement('div');
     h.className = 'handle ' + c; h.dataset.c = c;
-    h.style.left = Lx + Wd * fx + 'px'; h.style.top = T + Hd * fy + 'px';
+    const [x, y] = at(fx * Wd / 2, fy * Hd / 2 - (c === 'rot' ? ROT_GAP : 0));
+    h.style.left = x + 'px'; h.style.top = y + 'px';
+    if (rot) h.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+    if (c === 'rot') h.title = 'Drehen (⇧ = in 15°-Schritten)';
     host.appendChild(h);
   }
 }
@@ -675,6 +687,11 @@ itemsEl.addEventListener('dblclick', onItemDbl);
 const onHandleDown = e => {
   const h = e.target.closest('.handle'); if (!h || sel < 0) return;
   e.preventDefault(); e.stopPropagation();
+  if (h.dataset.c === 'rot') { // Drehen um die Mitte
+    const r = rectOf(itemEl(sel)), cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    drag = { mode: 'rotate', i: sel, cx, cy, a0: Math.atan2(e.clientY - cy, e.clientX - cx), r0: +L.items[sel].rot || 0, start: toPage(e.clientX, e.clientY), moved: false };
+    return;
+  }
   drag = { mode: 'resize', c: h.dataset.c, i: sel, start: toPage(e.clientX, e.clientY), o: dragOrig(sel), moved: false };
 };
 handlesEl.addEventListener('pointerdown', onHandleDown);
@@ -693,19 +710,30 @@ window.addEventListener('pointermove', e => {
     renderHandles();
     return;
   }
+  if (drag.mode === 'rotate') {
+    let a = drag.r0 + (Math.atan2(e.clientY - drag.cy, e.clientX - drag.cx) - drag.a0) * 180 / Math.PI;
+    if (e.shiftKey) a = Math.round(a / 15) * 15;
+    else { const q = Math.round(a / 90) * 90; if (Math.abs(a - q) < 2.5) a = q; } // rastet bei 0/90/180° leicht ein
+    L.items[drag.i].rot = normRot(a);
+    syncItem(drag.i); renderHandles();
+    setStatus(`Drehung ${fmtRot(L.items[drag.i].rot)}`);
+    return;
+  }
   const it = L.items[drag.i], o = drag.o;
   if (drag.mode === 'move') {
     it.x = Math.round(o.x + dx); it.y = Math.round(o.y + dy);
-  } else if (it.type === 'text') {
-    if (drag.c === 'w') { const nw = Math.max(60, o.w - dx); it.x = Math.round(o.x + o.w - nw); it.w = Math.round(nw); }
-    else it.w = Math.round(Math.max(60, o.w + dx));
   } else {
-    const ar = o.w / o.h, c = drag.c;
-    const fx = c.includes('w') ? o.x + o.w : o.x, fy = c.includes('n') ? o.y + o.h : o.y;
-    const nw = Math.max(30, o.w + (c.includes('e') ? dx : -dx)), nh = nw / ar;
-    it.w = Math.round(nw); it.h = Math.round(nh);
-    it.x = Math.round(c.includes('w') ? fx - nw : fx);
-    it.y = Math.round(c.includes('n') ? fy - nh : fy);
+    // gegenüberliegende Ecke/Kante bleibt stehen – gerechnet in Objekt-Richtung, damit es auch gedreht stimmt
+    const c = drag.c, sx = c.includes('e') ? 1 : -1, sy = c.includes('s') ? 1 : c.includes('n') ? -1 : 0;
+    const th = (+o.rot || 0) * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
+    const R = (x, y) => [x * cs - y * sn, x * sn + y * cs];
+    const ldx = dx * cs + dy * sn; // Mausweg entlang der Objektbreite
+    const oh = o.h || 0;
+    const nw = Math.max(it.type === 'text' ? 60 : 30, o.w + sx * ldx), nh = it.type === 'text' ? oh : nw * o.h / o.w;
+    const [ax, ay] = R(-sx * o.w / 2, -sy * oh / 2), [bx, by] = R(sx * nw / 2, sy * nh / 2);
+    const ncx = o.x + o.w / 2 + ax + bx, ncy = o.y + oh / 2 + ay + by;
+    it.w = Math.round(nw); if (it.type !== 'text') it.h = Math.round(nh);
+    it.x = Math.round(ncx - nw / 2); it.y = Math.round(ncy - nh / 2);
   }
   if (o.pin === 'b') it.y = Math.round(o._hs - it.y - (it.type === 'text' ? o._oh : it.h)); // zurück in „Abstand von unten"
   syncItem(drag.i);
@@ -714,7 +742,7 @@ window.addEventListener('pointermove', e => {
 });
 window.addEventListener('pointerup', () => {
   if (!drag) return;
-  if (drag.moved) { measureTexts(); renderHandles(); markDirty(); }
+  if (drag.moved) { measureTexts(); renderHandles(); markDirty(); if (drag.mode === 'rotate') renderInspector(); }
   hidePinGuide();
   drag = null;
 });
@@ -745,7 +773,7 @@ function startText(i, isNew = false, before = null) {
   editing = { i, isNew, before: before || snapshot() };
   el.contentEditable = 'plaintext-only';
   if (el.contentEditable !== 'plaintext-only') el.contentEditable = 'true';
-  el.spellcheck = false;
+  el.spellcheck = true; // Firefox-Rechtschreibprüfung: rote Wellenlinie, Rechtsklick = Vorschläge
   outer.classList.add('editing');
   el.focus();
   const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
@@ -842,7 +870,7 @@ function exitCrop(commit) {
   if (!cropState) return;
   const { it, full, box } = cropState;
   tearDownCrop();
-  if (!commit) { if (undoStack.length) undoStack.pop(); updateHistory(); renderHandles(); renderInspector(); return; }
+  if (!commit) { if (undoStack.length) undoStack.pop(); updateHistory(); const i = L.items.indexOf(it); if (i >= 0) syncItem(i); renderHandles(); renderInspector(); return; }
   const fr = { x: (box.x - full.x) / full.w, y: (box.y - full.y) / full.h, w: box.w / full.w, h: box.h / full.h };
   const isFull = fr.x < 0.002 && fr.y < 0.002 && fr.w > 0.998 && fr.h > 0.998;
   it.x = Math.round(box.x); it.y = Math.round(box.y); it.w = Math.round(box.w); it.h = Math.round(box.h);
@@ -855,6 +883,7 @@ function enterCrop() {
   if (it.type === 'text' || it.type === 'draw' || it.type === 'random') return;
   if (it.pin) return setStatus('Zum Zuschneiden erst die Fixierung lösen', 'err');
   pushUndo();
+  itemEl(sel)?.style.setProperty('--r', '0deg'); // zum Zuschneiden kurz gerade, danach wieder gedreht
   const c = it.crop || { x: 0, y: 0, w: 1, h: 1 };
   const full = { w: it.w / c.w, h: it.h / c.h };
   full.x = it.x - c.x * full.w; full.y = it.y - c.y * full.h;
@@ -995,14 +1024,17 @@ function ungroupDraw() {
   if (L.items[sel].pin) setPin('', { undo: false, quiet: true }); // erst zurück auf die Seite
   const it = L.items[sel];
   const k = it.w / it.bw;
+  const th = (+it.rot || 0) * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th), mx = it.x + it.w / 2, my = it.y + it.h / 2;
+  const turn = (x, y) => [mx + (x - mx) * cs - (y - my) * sn, my + (x - mx) * sn + (y - my) * cs]; // gedrehtes Objekt -> Striche mitdrehen
   const news = it.strokes.map(s => ({ ...s, id: newId(), size: Math.max(1, s.size * k),
-    points: s.points.map(p => ({ x: r1(it.x + p.x * k), y: r1(it.y + p.y * k), p: p.p })) }));
+    points: s.points.map(p => { const [x, y] = turn(it.x + p.x * k, it.y + p.y * k); return { x: r1(x), y: r1(y), p: p.p }; }) }));
   const start = L.strokes.length;
   L.strokes = [...L.strokes, ...news];
   L.items.splice(sel, 1);
   if (L.mobile && page.items.some(b => b.id === it.id) && !page.m.hide.includes(it.id)) page.m.hide.push(it.id);
   sel = -1;
-  redrawRange(it.y - 20, it.y + it.h + 20);
+  const ext = Math.hypot(it.w, it.h) / 2;
+  redrawRange(my - ext - 20, my + ext + 20);
   renderItems(); markDirty();
   // gleich als Lasso-Auswahl, damit man direkt weiterarbeiten (oder neu gruppieren) kann
   setTool('lasso');
@@ -1082,6 +1114,21 @@ function moveLayer(d) {
   L.items = next;
   if (!multi.length) sel = L.items.indexOf(objs[0]);
   renderItems(); renderInspector(); markDirty();
+}
+// ---------- Drehen ----------
+const normRot = a => { a = Math.round((((a % 360) + 540) % 360 - 180) * 10) / 10; return a === -180 ? 180 : a; }; // -180..180, 0,1° genau
+const fmtRot = a => String(+a || 0).replace('.', ',') + '°';
+function setRot(fn) { // fn(alter Winkel) -> neuer Winkel, für alle gewählten Objekte
+  const idx = targets(); if (!idx.length) return;
+  pushUndo('rot');
+  for (const i of idx) { const it = L.items[i], a = normRot(fn(+it.rot || 0)); if (a) it.rot = a; else delete it.rot; syncItem(i); }
+  renderHandles(); markDirty();
+}
+function rotSection(cur) {
+  return `<div class="sec"><h4>⟳ Drehung</h4><div class="row">
+    <input type="number" data-rot step="1" value="${cur ?? ''}" placeholder="gemischt" style="width:70px"> °
+    <button data-act="rot" data-d="-90" title="90° nach links">↺ 90°</button><button data-act="rot" data-d="90" title="90° nach rechts">↻ 90°</button><button data-act="rot" data-d="0" title="Gerade stellen">0°</button></div>
+    <div class="note">Oder am runden Griff über dem Objekt ziehen – mit ⇧ in 15°-Schritten.</div></div>`;
 }
 function nudge(dx, dy) {
   const idx = targets();
@@ -1422,6 +1469,9 @@ function multiPanel() {
     </div><div class="btns" style="margin-top:6px">
       <button data-act="dup" title="Duplizieren (⌘D)">⧉ Duplizieren</button>
       <button data-act="del" class="danger" title="${L.mobile ? 'Nur auf dem Handy ausblenden' : 'Löschen'} (Entf)">🗑 ${L.mobile ? 'Ausblenden' : 'Löschen'}</button></div></div>
+  ${objs.filter(o => o.type === 'image').length >= 2 ? `<div class="sec"><h4>▦ Galerie</h4><div class="btns"><button data-act="galJoin" class="primary">▦ Als Galerie verbinden</button></div>
+    <div class="note">Klick auf eines der Bilder öffnet live die Großansicht – mit Karussell durch alle verbundenen Bilder.${objs.some(o => o.type !== 'image') ? ' (Nur Fotos werden verbunden.)' : ''}</div></div>` : ''}
+  ${(() => { const rs = new Set(objs.map(o => +o.rot || 0)); return rotSection(rs.size === 1 ? [...rs][0] : null); })()}
   <div class="sec"><h4>📌 Beim Scrollen</h4><div class="seg">${pinBtn('', 'scrollt mit')}${pinBtn('t', 'oben fixiert')}${pinBtn('b', 'unten fixiert')}</div>
     ${same === null ? '<div class="note">Gemischt – ein Klick stellt alle gleich ein.</div>' : ''}</div>
   <div class="note">⇧-Klick: hinzufügen / entfernen · Ziehen: alle zusammen bewegen · Pfeiltasten: verschieben · ⌘A: alles · Esc: aufheben</div>`;
@@ -1456,7 +1506,7 @@ function pagePanel() {
     <div class="note">Stile legst du an, indem du eine Textbox gestaltest und „Als neuen Stil speichern" wählst.</div>
   </div>
   ${isIndex ? '' : '<div class="sec"><button class="danger wide" data-act="deletePage">Seite löschen</button></div>'}
-  <div class="note">⇧-Klick Mehrfachauswahl · ⌘A alles · ⌘G Handschrift gruppieren · M Desktop/Handy · V Auswählen · B Pinsel · E Radierer · L Lasso · T Text · K Zuschneiden · ⌘D Duplizieren · Leertaste+Ziehen = schieben · ⌘+Scroll = Zoom · G Übersicht</div>`;
+  <div class="note">⇧-Klick Mehrfachauswahl · ⌘A alles · ⌘G Handschrift gruppieren · M Desktop/Handy · A Auswählen · B Pinsel · E Radierer · L Lasso · T Text · K Zuschneiden · ⌘D Duplizieren · Leertaste+Ziehen = schieben · ⌘+Scroll = Zoom · G Übersicht</div>`;
 }
 const isUrl = v => /^https?:\/\//i.test(v || '');
 function linkSection(it) {
@@ -1484,6 +1534,7 @@ function itemPanel(it) {
       <button data-act="pin" data-v="t" class="${it.pin === 't' ? 'active' : ''}">oben fixiert</button>
       <button data-act="pin" data-v="b" class="${it.pin === 'b' ? 'active' : ''}">unten fixiert</button></div>
       <div class="note">${it.pin ? `Bleibt am Bildschirm stehen (Abstand zur ${it.pin === 't' ? 'Oberkante' : 'Unterkante'}). Mit den Ebenen-Knöpfen oben legst du fest, was davor oder dahinter liegt.${L.mobile ? '' : ' Fürs Handy separat einstellbar.'}` : 'Fixierte Elemente bleiben stehen, während die Seite darunter scrollt – z. B. Logo oder Kontakt.'}</div></div>`;
+  h += rotSection(+it.rot || 0);
   if (it.type === 'text') h += textPanel(it);
   else if (it.type === 'random') {
     h += `<div class="sec"><h4>🎲 Zufallsschnitt</h4>
@@ -1491,7 +1542,12 @@ function itemPanel(it) {
       <div class="btns"><button data-act="rcReload">↻ Clips neu einlesen</button></div></div>`;
   } else if (it.type === 'draw') {
     h += `<div class="sec"><h4>Handschrift</h4><div class="btns"><button data-act="ungroup">✎ In Striche auflösen (⌘⇧G)</button></div>
-      <div class="note">Zum Weitermalen oder Radieren auflösen, danach mit dem Lasso wieder gruppieren.</div></div>`;
+      <div class="note">Zum Weitermalen oder Radieren auflösen, danach mit dem Lasso wieder gruppieren.</div></div>
+      <div class="sec"><h4>▦ Als Galerie-Symbol verwenden</h4><div class="seg">
+        <button data-act="galUi" data-v="prev" title="Pfeil zurück in der Großansicht">← zurück</button>
+        <button data-act="galUi" data-v="next" title="Pfeil weiter in der Großansicht">→ weiter</button>
+        <button data-act="galUi" data-v="close" title="Schließen-Zeichen der Großansicht">× schließen</button></div>
+        <div class="note">Gilt für alle Galerien auf allen Seiten. Größe wie hier gezeichnet (wächst mit der Bildschirmbreite).</div></div>`;
   } else {
     h += `<div class="sec"><h4>Ausschnitt</h4><div class="btns"><button data-act="crop" class="${cropState ? 'toggle active' : ''}">✂ Zuschneiden (K)</button>${it.crop ? '<button data-act="uncrop">ganzes Bild</button>' : ''}</div></div>`;
     if (it.type === 'video') {
@@ -1504,6 +1560,11 @@ function itemPanel(it) {
           scene: 'Startet, sobald es ganz im Bild ist, pausiert, wenn es weg ist. Der Ton blendet mit ein und aus; Klick aufs Video = Ton an/aus. (Browser geben Ton erst nach dem ersten Klick/Tippen auf der Seite frei – bis dahin läuft es stumm.)',
         }[it.mode] || 'Läuft automatisch, stumm, in Schleife – wie ein bewegtes Foto.'}${it.link && it.mode && it.mode !== 'loop' ? ' Mit Link wird es als Loop gezeigt.' : ''}</div></div>`;
     } else {
+      if (it.gal) {
+        const n = L.items.filter(o => o.gal === it.gal && o.type === 'image').length;
+        h += `<div class="sec"><h4>▦ Galerie · ${n} Bilder</h4><div class="btns"><button data-act="galSelect">Alle auswählen</button><button data-act="galLeave">Aus Galerie lösen</button></div>
+          <div class="note">${it.link ? '⚠ Dieses Bild hat einen Link – live gewinnt der Link, die Großansicht öffnet sich dann nicht.' : 'Weitere Bilder hinzufügen: mit ⇧-Klick dazu markieren → „Als Galerie verbinden".'}</div></div>`;
+      }
       h += `<div class="sec"><h4>Beschreibung (Alt-Text)</h4><div class="row"><input type="text" data-item="alt" value="${esc(it.alt || '')}" placeholder="für Screenreader & Google" style="flex:1"></div></div>`;
     }
   }
@@ -1522,6 +1583,7 @@ function textPanel(it) {
   const hasOv = Object.keys(ov).length > 0;
   return `<div class="sec"><h4>Textstil</h4>
     <div class="row"><select data-change="style" style="flex:1">${optionList([['', '— ohne Stil —'], ...site.styles.map(s => [s.id, s.name])], it.style || '')}</select></div>
+    <div class="row"><label title="Für die Rechtschreibprüfung (und live für Screenreader)">Sprache</label><div class="seg" style="flex:1">${[['', 'Auto'], ['de', 'DE'], ['en', 'EN']].map(([v, t]) => `<button data-act="lang" data-v="${v}" class="${(it.lang || '') === v ? 'active' : ''}">${t}</button>`).join('')}</div></div>
     <div class="row">${lab('font', 'Schrift')}<select data-tp="font">${optionList(fontsOpts, st.font)}</select><button data-act="fontAdd" title="Schrift hinzufügen">＋</button></div>
     <div class="row">${lab('size', L.mobile ? 'Größe 📱' : 'Größe')}<input type="number" data-tp="size" min="4" max="2000" step="1" value="${st.size}"></div>
     <div class="row">${lab('weight', 'Stärke')}<select data-tp="weight">${optionList(weights, st.weight)}</select></div>
@@ -1539,7 +1601,7 @@ function textPanel(it) {
       <button data-act="styleNew">Als neuen Stil speichern…</button>
       ${hasOv ? '<button data-act="styleReset">Abweichungen zurücksetzen</button>' : ''}
     </div>
-    <div class="note">Doppelklick auf die Textbox = schreiben. ● = weicht vom Stil ab.</div>
+    <div class="note">Doppelklick auf die Textbox = schreiben – Rechtschreibfehler werden rot unterstrichen, Rechtsklick aufs Wort zeigt Vorschläge. ● = weicht vom Stil ab.</div>
   </div>`;
 }
 function graphPanel() {
@@ -1571,6 +1633,9 @@ insp.addEventListener('input', e => {
     markDirty();
   } else if (t.dataset.site) {
     site[t.dataset.site] = t.value; saveSite();
+  } else if ('rot' in t.dataset) {
+    if (t.value === '' || !Number.isFinite(Number(t.value))) return;
+    setRot(() => Number(t.value));
   } else if (t.dataset.item) {
     pushUndo('item:' + t.dataset.item + sel);
     L.items[sel][t.dataset.item] = t.value; markDirty();
@@ -1607,6 +1672,35 @@ insp.addEventListener('click', async e => {
       delete it.crop; renderItems(); renderInspector(); return markDirty();
     }
     case 'pin': return setPin(b.dataset.v);
+    case 'galUi': {
+      if (it.up !== it.v) { await save(); } // PNG des Objekts muss gespeichert sein
+      const base = page.items.find(o => o.id === it.id) || it; // Desktop-Größe als Maß
+      try {
+        await postJSON('/api/gallery-ui', { page: page.id, item: it.id, role: b.dataset.v, w: base.w, h: base.h });
+        return setStatus(`Galerie-Symbol „${{ prev: '← zurück', next: '→ weiter', close: '× schließen' }[b.dataset.v]}" übernommen – gilt für alle Galerien`, 'ok');
+      } catch (e) { return setStatus(e.message, 'err'); }
+    }
+    case 'galJoin': { // ausgewählte Fotos zu einer Galerie verbinden (bestehende Galerie wird erweitert)
+      const imgs = targets().map(i => L.items[i]).filter(o => o.type === 'image');
+      if (imgs.length < 2) return;
+      pushUndo();
+      const gid = imgs.find(o => o.gal)?.gal || 'g' + newId();
+      const merge = new Set(imgs.map(o => o.gal).filter(Boolean));
+      for (const o of L.items) if (o.gal && merge.has(o.gal)) o.gal = gid; // mehrere Galerien -> eine
+      for (const o of imgs) o.gal = gid;
+      renderItems(); renderInspector(); markDirty();
+      return setStatus(`Galerie mit ${L.items.filter(o => o.gal === gid).length} Bildern verbunden`, 'ok');
+    }
+    case 'galSelect': return setSelection(L.items.filter(o => o.gal === it.gal));
+    case 'galLeave': {
+      pushUndo();
+      const g = it.gal; delete it.gal;
+      const rest = L.items.filter(o => o.gal === g);
+      if (rest.length === 1) delete rest[0].gal; // eine Galerie aus nur einem Bild gibt es nicht
+      rerenderItem(sel); renderItems(); renderInspector(); return markDirty();
+    }
+    case 'lang': pushUndo(); if (b.dataset.v) it.lang = b.dataset.v; else delete it.lang; rerenderItem(sel); renderInspector(); return markDirty();
+    case 'rot': { const d = Number(b.dataset.d); setRot(a => (d ? a + d : 0)); return renderInspector(); }
     case 'layer': return moveLayer({ inf: Infinity, '-inf': -Infinity }[b.dataset.d] ?? Number(b.dataset.d));
     case 'mode': pushUndo(); it.mode = b.dataset.v; rerenderItem(sel); renderInspector(); return markDirty();
     case 'openLink': return isUrl(it.link) ? window.open(it.link, '_blank', 'noopener') : openPage(it.link);
@@ -1805,7 +1899,7 @@ function buildMobileL() {
     get ink() { return m.ink; }, set ink(v) { m.ink = v; },
   };
 }
-const GEO = ['x', 'y', 'w', 'h', 'crop', 'pin'];
+const GEO = ['x', 'y', 'w', 'h', 'crop', 'pin', 'rot'];
 function syncBack() {
   if (!L || !L.mobile || !page.m) return;
   const m = page.m;
@@ -1822,6 +1916,7 @@ function syncBack() {
     const e = { ref: v.id, x: v.x, y: v.y, w: v.w, h: v.h };
     if (v.crop) e.crop = v.crop;
     if (v.pin) e.pin = v.pin;
+    if (v.rot) e.rot = v.rot;
     // Textstil: alles geteilt – nur die Schriftgröße darf aufs Handy abweichen
     const o = { ...(v.over || {}) };
     const vs = o.size; delete o.size;
@@ -1863,6 +1958,7 @@ function mobileEntryFor(b, y) {
   if (h > MW * 1.3) { h = MW * 1.3; w = h * b.w / b.h; }
   const e = { ref: b.id, x: Math.round((MW - w) / 2), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
   if (b.crop) e.crop = b.crop;
+  if (b.rot) e.rot = b.rot;
   return e;
 }
 // Automatischer Vorschlag: alles in Desktop-Reihenfolge (oben→unten) untereinander, Striche wandern mit
@@ -2211,7 +2307,7 @@ window.addEventListener('keydown', e => {
   if (mod && k === '-') { e.preventDefault(); setZoom(zoom / 1.25); return; }
   if (mod) return;
   if (e.key === ' ') { e.preventDefault(); if (!spaceDown) { spaceDown = true; body.classList.add('space-pan'); } return; }
-  const toolKeys = { v: 'select', b: 'brush', e: 'eraser', l: 'lasso', t: 'text' };
+  const toolKeys = { a: 'select', v: 'select', b: 'brush', e: 'eraser', l: 'lasso', t: 'text' };
   if (toolKeys[k]) return setTool(toolKeys[k]);
   if (k === 'g') return showGraph();
   if (k === 'm') return setMode(mode === 'mobile' ? 'desktop' : 'mobile');

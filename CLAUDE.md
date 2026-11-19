@@ -82,6 +82,18 @@ content/pages/<id>/
 - Ziehen eines gewählten Objekts bewegt alle (`drag.mode = 'multi'`, unten fixierte intern „von oben").
 - Objekt-Referenzen statt Indizes, weil sich Indizes beim Umsortieren ändern; `applyState`/`enterLayout` leeren `multi`.
 
+## Drehen (`it.rot`, Grad −180…180)
+- Runder Griff über der Auswahl (⇧ = 15°-Schritte, rastet bei 0/90/180° leicht ein) oder Inspector „⟳ Drehung"
+  (Zahl, ↺/↻ 90°, 0°; wirkt auch auf Mehrfachauswahl, jedes Objekt um seine eigene Mitte).
+- Render: `itemHTML` setzt `--r:<deg>` am Element; site.css: `.pg .it{rotate:var(--r,none)}`. Text (`.it-text` hat Höhe 0)
+  dreht stattdessen `.tx`: `scale(k) translate(50%,50%) rotate(var(--r)) translate(-50%,-50%)` -> um die Textmitte.
+- Editor: Auswahlrahmen/Griffe in Objekt-Richtung (Mitte = Mitte von `getBoundingClientRect`, Maße = w/h·scale);
+  Skalieren rechnet den Mausweg in Objekt-Richtung um, die Gegenecke bleibt stehen. Zuschneiden zeigt das Bild kurz gerade.
+  „In Striche auflösen" dreht die Striche mit. `rot` ist Geometrie (`GEO`) -> pro Layout (Handy eigen).
+- Taste **A** (wie V) = Auswahlwerkzeug.
+- Nach Änderungen an `shared/render.mjs` den Server neu starten (Vorschau nutzt das geladene Modul).
+- Editor per URL öffnen: `/#seite=<id>` (nicht `/#<id>` -> öffnet sonst die Startseite!). Tests nie auf echten Seiten.
+
 ## Handschrift-Objekte (gruppierte Striche)
 - Lasso-Auswahl → „▣ Als Objekt" (schwebender Knopf an der Auswahl, Seitenleiste, ⌘G) → `groupLasso()` erzeugt
   `{type:'draw', x,y,w,h, bw,bh, strokes (lokal 0..bw/0..bh), v, up}`. Radierer-Striche, die nach den gewählten
@@ -147,6 +159,10 @@ content/pages/<id>/
   (`--vwn` = clientWidth/100 per Head-Skript, Fallback 19.2), Editor `--k = scale`, Übersicht `opt.k`. `--u = --k·1px`.
   Dadurch identische Zeilenumbrüche & Proportionen bei jedem Zoom (vorher schwankte die Textbreite bis 4,5 %).
   Editor: bearbeitet wird der innere `.tx` (`boxEl()`), Rahmen/Messungen über `rectOf()`; `it.h` = `.tx.offsetHeight`.
+  `syncItem()` muss bei Text auch `.tx.style.width` setzen (sonst bricht der Text beim Ziehen nicht um).
+- Rechtschreibung: Firefox-eigene Prüfung beim Bearbeiten (`spellcheck = true`), Rechtsklick im bearbeiteten Text
+  bleibt beim Firefox-Menü (Vorschläge). `it.lang` = 'de' | 'en' | – (Auto = alle aktivierten Wörterbücher) →
+  `lang`-Attribut am `.tx`. Firefox des Nutzers ist englisch → deutsches Wörterbuch als Add-on nötig.
 - **Responsive Bilder:** Server erzeugt je JPG/PNG Fassungen in `resp/<datei>-<breite>.(webp|jpg)` (480/960/1440/2048/
   2880, max. Originalbreite) – beim Upload, beim Serverstart und vor jedem Veröffentlichen. Qualität PRO BILD:
   WebP q82→95, bis SSIM ≥ 0,97 gegen das gleich verkleinerte Original; sonst JPEG q90 (körnige / schon komprimierte
@@ -159,6 +175,20 @@ content/pages/<id>/
   Links). site.js: zeigt ein Link genau auf die Seite aus `document.referrer` (gleiche Website) → `history.back()`,
   damit man an der Stelle landet, von der aus man geklickt hat. (`page.back` wird nicht mehr verwendet.)
 - **Editor spielt keine Videos** (auch keinen Zufallsschnitt): Standbild/Poster + kleines ▶. Abgespielt wird in Vorschau/live.
+
+## Galerie (Großansicht + Karussell)
+- `item.gal = '<id>'` an Fotos (geteilter Inhalt, gilt auch im Handy-Layout). Editor: ⇧-Mehrfachauswahl →
+  „▦ Als Galerie verbinden" (bestehende Galerien werden zusammengeführt); Einzelbild: „Alle auswählen" / „Aus Galerie
+  lösen" (eine Galerie aus nur 1 Bild wird aufgelöst). Badge ▦ im Editor.
+- Live (site.js): Klick auf `div.it[data-gal]` → `.lb`-Overlay; Reihenfolge = Position in der SICHTBAREN Fassung
+  (oben→unten, links→rechts); Bildquelle = responsive srcset mit `sizes=100vw`; Pfeile/Tasten/Wischen/Esc;
+  `history.pushState` → Zurück-Geste schließt nur die Großansicht. Bilder mit Link (`a.it`) öffnen keine Großansicht.
+- **Galerie-Symbole in Handschrift** (seitenweit): `content/ui/gal-prev|next|close.png` + `gallery.json` {rolle:{w,h,v}}
+  (eigene Datei, weil der Editor `site.json` komplett überschreibt). Übernahme im Editor: Handschrift-Objekt wählen →
+  „▦ Als Galerie-Symbol verwenden" (`POST /api/gallery-ui`, kopiert `draw_<id>.png`). `document.mjs` → `galleryCSS()`:
+  Größe = gezeichnete Breite in Einheiten × Bildschirmbreite/2560, `clamp(34px … 110px)`. Build kopiert `content/ui`.
+  Aktuell übernommen von Seite `fromnaturetoculturetonature` (die Vorlagen-Objekte liegen dort unten, y≈4500).
+  Handy: Pfeile unten links/rechts.
 
 ## Zufallsschnitt (Objekttyp `random`) & externe Links
 - Nach dem Prinzip von `~/Desktop/Random-Edits-Kindlab` („Erleben"): `shared/randomcut.mjs` – zwei gestapelte `<video>`,

@@ -46,7 +46,7 @@ export function normalizePage(p = {}, id) {
     updated: p.updated || '',
   };
 }
-// Handy-Layout: place = [{ref,x,y,w,h,crop?,size?}] (Reihenfolge = Ebenen), own = Elemente nur fürs Handy,
+// Handy-Layout: place = [{ref,x,y,w,h,crop?,rot?,size?}] (Reihenfolge = Ebenen), own = Elemente nur fürs Handy,
 // strokes = eigene Handy-Striche (Kopien mit src = Desktop-Strich-ID), hide/skip = bewusst ausgeblendete IDs.
 function normalizeMobile(m) {
   if (!m || typeof m !== 'object') return null;
@@ -69,6 +69,7 @@ export function mergeEntry(b, e) {
   const it = { ...b, x: e.x, y: e.y, w: e.w, h: e.h };
   if (e.pin) it.pin = e.pin; else delete it.pin;
   if (e.crop) it.crop = e.crop; else delete it.crop;
+  if (e.rot) it.rot = e.rot; else delete it.rot;
   if (e.size != null) it.over = { ...(b.over || {}), size: e.size };
   return it;
 }
@@ -171,18 +172,21 @@ export function itemHTML(it, i, p, site, opt) {
   const pos = (opt.pos ? opt.pos(it)
     : !it.pin ? posPct(it, p)
     : opt.thumb ? posPct({ ...it, y: p.top + pinTopY(it, p) }, p) // Vorschaubild: Stand beim Seitenanfang
-    : posPinLive(it, p)) + `z-index:${i + 1};`; // eine gemeinsame Ebenen-Reihenfolge für alle Elemente
+    : posPinLive(it, p)) + `z-index:${i + 1};` // eine gemeinsame Ebenen-Reihenfolge für alle Elemente
+    + (+it.rot ? `--r:${num(+it.rot, 0)}deg;` : ''); // Drehung um die Mitte (site.css)
   const href = it.link && opt.link ? opt.link(it.link) : null;
   const tag = href ? 'a' : 'div';
   const cls = `it it-${esc(it.type)}${it.link ? ' has-link' : ''}${it.pin && !opt.thumb ? ' pinned' : ''}`;
   const ext = /^https?:\/\//i.test(href || '');
-  const head = `<${tag} class="${cls}" data-i="${i}"${href ? ` href="${esc(href)}"` : ''}${ext ? ' target="_blank" rel="noopener"' : ''}`;
+  const gal = it.gal && it.type === 'image' ? ` data-gal="${esc(it.gal)}"` : ''; // Galerie (Großansicht + Karussell)
+  const head = `<${tag} class="${cls}" data-i="${i}"${gal}${href ? ` href="${esc(href)}"` : ''}${ext ? ' target="_blank" rel="noopener"' : ''}`;
   if (it.type === 'text') {
     let body = esc(it.text);
     // E-Mail-Adressen vor Adress-Sammlern verbergen: verschlüsselt im HTML, site.js macht daraus einen Link
     if (opt.protectEmail) body = body.replace(/([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, (m, a, b) =>
       `<span class="em" data-em="${[...m].map(c => c.charCodeAt(0) + 3).join('.')}">${a} [at] ${b.replace(/\./g, ' [punkt] ')}</span>`);
-    return `${head} style="${esc(pos)}"><div class="tx" style="${esc(`width:${num(+it.w, 600)}px;` + textCss(styleOf(it, site), pageW(p)))}">${body}</div></${tag}>`;
+    const lang = ['de', 'en'].includes(it.lang) ? ` lang="${it.lang}"` : ''; // Sprache: Rechtschreibung, Silbentrennung, Screenreader
+    return `${head} style="${esc(pos)}"><div class="tx"${lang} style="${esc(`width:${num(+it.w, 600)}px;` + textCss(styleOf(it, site), pageW(p)))}">${body}</div></${tag}>`;
   }
   // Zufallsschnitt: Clips aus einem Unterordner, live zufällig geschnitten (randomcut.mjs)
   if (it.type === 'random') {
