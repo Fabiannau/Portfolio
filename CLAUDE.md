@@ -53,6 +53,9 @@ content/pages/<id>/
 - Live: Seiten mit `m` liefern `.pg-d` + `.pg-m`; CSS zeigt bis **760 px** Fensterbreite (`MOBILE_MAX`) das Handy-Layout.
   `?ansicht=handy` erzwingt es (Editor-Vorschau öffnet im Handy-Modus ein schmales Fenster). Loop-Videos haben live kein
   `autoplay` – `site.js` spielt nur sichtbare (IntersectionObserver), so lädt die versteckte Fassung nicht mit.
+- **Handy → Desktop:** Handy-eigene Objekte (`m.own`) per Inspector „🖥 Auch auf den Desktop übernehmen" (`copyToDesktop()`,
+  auch Mehrfachauswahl) -> wandern nach `page.items` (geteilt wie Desktop-Objekte), Handy-Platz bleibt unverändert. Desktop-Platz:
+  gleiche relative Seitenhöhe, Größe × `D_SCALE` (W/MW·0,55), oben in den Ebenen. Freie Handy-Striche erst mit ⌘G gruppieren.
 
 ## Fixierte Elemente & Ebenen
 - **Ebenen:** alle Elemente (fixiert oder nicht) teilen EINE Reihenfolge = Array-Index (`z-index: i+1`, in `itemHTML`).

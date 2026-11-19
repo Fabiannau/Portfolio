@@ -1485,7 +1485,8 @@ function multiPanel() {
       <button data-act="layer" data-d="inf" title="Ganz nach vorne (⌘⇧])">⤒</button>
     </div><div class="btns" style="margin-top:6px">
       <button data-act="dup" title="Duplizieren (⌘D)">⧉ Duplizieren</button>
-      <button data-act="del" class="danger" title="${L.mobile ? 'Nur auf dem Handy ausblenden' : 'Löschen'} (Entf)">🗑 ${L.mobile ? 'Ausblenden' : 'Löschen'}</button></div></div>
+      <button data-act="del" class="danger" title="${L.mobile ? 'Nur auf dem Handy ausblenden' : 'Löschen'} (Entf)">🗑 ${L.mobile ? 'Ausblenden' : 'Löschen'}</button></div>
+    ${(() => { const n = objs.filter(isMobileOnly).length; return n ? `<div class="btns" style="margin-top:6px"><button data-act="toDesktop" class="primary">🖥 ${n === objs.length ? 'Alle' : n + ' davon'} auch auf den Desktop übernehmen</button></div>` : ''; })()}</div>
   ${objs.filter(o => o.type === 'image').length >= 2 ? `<div class="sec"><h4>▦ Galerie</h4><div class="btns"><button data-act="galJoin" class="primary">▦ Als Galerie verbinden</button></div>
     <div class="note">Klick auf eines der Bilder öffnet live die Großansicht – mit Karussell durch alle verbundenen Bilder.${objs.some(o => o.type !== 'image') ? ' (Nur Fotos werden verbunden.)' : ''}</div></div>` : ''}
   ${(() => { const rs = new Set(objs.map(o => +o.rot || 0)); return rotSection(rs.size === 1 ? [...rs][0] : null); })()}
@@ -1496,7 +1497,7 @@ function multiPanel() {
 function lassoPanel() {
   return `<div class="sec"><h4>Handschrift-Auswahl · ${lassoSel.length} ${lassoSel.length === 1 ? 'Strich' : 'Striche'}</h4>
     <div class="btns"><button data-act="group" class="primary">▣ Als Objekt gruppieren (⌘G)</button></div>
-    <div class="note">Macht aus der Auswahl ein festes Objekt: verschieben, skalieren, Ebenen, fixieren & verlinken wie ein Foto. Später mit „In Striche auflösen" wieder bearbeitbar.</div>
+    <div class="note">Macht aus der Auswahl ein festes Objekt: verschieben, skalieren, Ebenen, fixieren & verlinken wie ein Foto. Später mit „In Striche auflösen" wieder bearbeitbar.${L.mobile ? ' Als Objekt kannst du es dann auch auf den Desktop übernehmen.' : ''}</div>
     <div class="btns"><button data-act="lassoDel" class="danger">🗑 Auswahl löschen</button></div>
     <div class="note">Auswahl ziehen = verschieben · Ecken = skalieren · Esc = aufheben</div></div>`;
 }
@@ -1545,7 +1546,7 @@ function itemPanel(it) {
       <button data-act="layer" data-d="1" title="Eine Ebene vor (⌘])">↑ vor</button>
       <button data-act="layer" data-d="inf" title="Ganz nach vorne (⌘⇧])">⤒</button>
     </div><div class="btns" style="margin-top:6px">
-      <button data-act="dup" title="Duplizieren (⌘D)">⧉ Duplizieren</button><button data-act="del" class="danger" title="${L.mobile ? 'Nur auf dem Handy ausblenden (Entf)' : 'Entfernen (Entf)'}">🗑</button></div>${L.mobile ? `<div class="note">📱 ${page.items.some(b => b.id === it.id) ? 'Platz & Größe nur fürs Handy · Inhalt geteilt' : 'Nur auf dem Handy'}</div>` : ''}</div>`;
+      <button data-act="dup" title="Duplizieren (⌘D)">⧉ Duplizieren</button><button data-act="del" class="danger" title="${L.mobile ? 'Nur auf dem Handy ausblenden (Entf)' : 'Entfernen (Entf)'}">🗑</button></div>${L.mobile ? `<div class="note">📱 ${page.items.some(b => b.id === it.id) ? 'Platz & Größe nur fürs Handy · Inhalt geteilt' : 'Nur auf dem Handy'}</div>` : ''}${isMobileOnly(it) ? `<div class="btns" style="margin-top:6px"><button data-act="toDesktop" class="primary">🖥 Auch auf den Desktop übernehmen</button></div>` : ''}</div>`;
   h += `<div class="sec"><h4>📌 Beim Scrollen</h4><div class="seg">
       <button data-act="pin" data-v="" class="${!it.pin ? 'active' : ''}">scrollt mit</button>
       <button data-act="pin" data-v="t" class="${it.pin === 't' ? 'active' : ''}">oben fixiert</button>
@@ -1776,6 +1777,7 @@ insp.addEventListener('click', async e => {
       return applyFonts(r.fonts);
     }
     case 'mPlace': return placeOnMobile(b.dataset.id);
+    case 'toDesktop': return copyToDesktop();
     case 'mAdopt': return adoptStrokes();
     case 'mAuto':
       if (!confirm('Handy-Layout dieser Seite komplett neu vorschlagen? Deine Handy-Anordnung und Handy-Striche werden ersetzt.')) return;
@@ -1977,6 +1979,33 @@ function mobileEntryFor(b, y) {
   if (b.crop) e.crop = b.crop;
   if (b.rot) e.rot = b.rot;
   return e;
+}
+// Handy-Objekte auf den Desktop übernehmen: das Objekt wird „geteilt" (wie alles vom Desktop) – Inhalt gemeinsam,
+// Platz & Größe je Ansicht. Auf dem Handy bleibt es genau, wo es ist; am Desktop landet es an der entsprechenden
+// Stelle der Seite (gleiche relative Höhe), etwas größer skaliert, ganz oben in den Ebenen.
+const isMobileOnly = it => !!(L.mobile && page.m && it && !page.items.some(b => b.id === it.id));
+const D_SCALE = W / MW * 0.55; // Handy-Einheiten -> Desktop (volle Handybreite ≈ halbe Desktopbreite)
+function copyToDesktop() {
+  const idx = targets().filter(i => isMobileOnly(L.items[i]));
+  if (!idx.length) return setStatus('Nur Objekte, die es bisher nur auf dem Handy gibt, lassen sich übernehmen', 'err');
+  pushUndo();
+  syncBack();
+  const m = page.m, mh = Math.max(1, m.bottom - m.top), dh = page.bottom - page.top;
+  for (const i of idx) {
+    const v = L.items[i], b = m.own.find(o => o.id === v.id); if (!b) continue;
+    const w = Math.min(W, Math.round(v.w * D_SCALE)), h = Math.round((v.h || 60) * D_SCALE);
+    const it = { ...b, x: Math.round(clamp(v.x / MW * W, 0, Math.max(0, W - w))), w, h };
+    it.y = v.pin ? Math.round(v.y * SCREEN / (MW * 2.1)) // fixiert: Abstand zur Bildschirmkante anteilig
+      : Math.round(page.top + (v.y - m.top) / mh * dh);
+    if (v.pin) it.pin = v.pin;
+    if (v.rot) it.rot = v.rot;
+    if (v.crop) it.crop = v.crop;
+    page.items.push(it);
+    m.own = m.own.filter(o => o !== b);
+  }
+  L = buildMobileL();
+  renderItems(); renderInspector(); updateMobileBadge(); markDirty();
+  setStatus(`${idx.length} ${idx.length === 1 ? 'Objekt' : 'Objekte'} auch auf den Desktop übernommen – dort an die richtige Stelle schieben (Taste M)`, 'ok');
 }
 // Automatischer Vorschlag: alles in Desktop-Reihenfolge (oben→unten) untereinander, Striche wandern mit
 async function autoMobile() {
