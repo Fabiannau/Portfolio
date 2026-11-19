@@ -19,6 +19,7 @@ export function renderDocument(page, site, fonts, ids, variants = null) {
   const opt = {
     variants: variants ? (pid, src) => variants.get(src) : null,
     media: (pid, f) => `media/${encodeURIComponent(pid)}/${encodeURIComponent(f)}`,
+    protectEmail: true,
     link: id => (/^https?:\/\//i.test(id) ? id : known.has(id) ? pageFile(id) : null), // Seite oder externe Webseite
     v: page.updated,
   };
@@ -32,14 +33,12 @@ export function renderDocument(page, site, fonts, ids, variants = null) {
     ? `<footer class="legal"><a href="${pageFile('impressum')}">Impressum &amp; Datenschutz</a></footer>` : '';
   const title = page.id === 'index' ? site.title : `${page.title} – ${site.title}`;
   const bg = page.bg || BG;
-  const back = page.id !== 'index' && page.back
-    ? `<a class="back" href="index.html" aria-label="Zurück zur Startseite">←</a>` : '';
   return `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${AI_META}
+${page.id === 'impressum' ? AI_META.replace('noai, noimageai', 'noindex, noai, noimageai') : AI_META}
 <title>${esc(title)}</title>
 <link rel="stylesheet" href="site.css">
 <script>(function(){var d=document.documentElement;if(/[?&]ansicht=handy/.test(location.search))d.classList.add('force-m');
@@ -47,10 +46,6 @@ function v(){d.style.setProperty('--vwn',d.clientWidth/100)}v();addEventListener
 <style>
 ${fontFaceCSS(fonts)}
 html,body{margin:0;background:${esc(bg)}}
-.back{position:fixed;left:16px;top:14px;z-index:100001;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
-  font:22px/1 -apple-system,system-ui,sans-serif;color:#141311;text-decoration:none;background:rgba(248,247,244,.82);
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 12px rgba(0,0,0,.12)}
-.back:hover{background:#fff}
 .legal{padding:28px 16px 34px;text-align:center;font:13px/1.4 -apple-system,system-ui,sans-serif}
 .legal a{color:#141311;opacity:.55;text-decoration:none}.legal a:hover{opacity:1;text-decoration:underline}
 .pg-m{display:none}
@@ -59,7 +54,6 @@ html.force-m .pg-d{display:none}html.force-m .pg-m{display:block}
 </style>
 </head>
 <body>
-${back}
 <main>${body}</main>
 ${legal}
 <script type="module" src="site.js"></script>

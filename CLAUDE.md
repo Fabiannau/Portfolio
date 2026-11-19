@@ -155,8 +155,9 @@ content/pages/<id>/
   bzw. `<img srcset>`; `sizes` = exakter vw-Anteil (Item-Breite/Seitenbreite/Crop). Werkzeuge: cwebp/dwebp, sips, ffmpeg.
   GitHub Action erzeugt NICHTS selbst → Fassungen müssen committet sein (Veröffentlichen erledigt das).
   Ergebnis Startseite: 22,6 MB → 0,6 MB (1x) / 1,6 MB (Retina) / 2,7 MB (iPhone 3x).
-- Kein Hover-Effekt auf verlinkten Objekten (Nutzerwunsch). Zurück-Knopf (`a.back`): kam man von derselben Website →
-  `history.back()` (Browser stellt die Scrollposition wieder her), sonst normaler Link zur Startseite (site.js).
+- Kein Hover-Effekt auf verlinkten Objekten (Nutzerwunsch). KEIN automatischer Zurück-Knopf (Nutzer setzt eigene
+  Links). site.js: zeigt ein Link genau auf die Seite aus `document.referrer` (gleiche Website) → `history.back()`,
+  damit man an der Stelle landet, von der aus man geklickt hat. (`page.back` wird nicht mehr verwendet.)
 - **Editor spielt keine Videos** (auch keinen Zufallsschnitt): Standbild/Poster + kleines ▶. Abgespielt wird in Vorschau/live.
 
 ## Zufallsschnitt (Objekttyp `random`) & externe Links
@@ -187,6 +188,9 @@ content/pages/<id>/
 
 ## Impressum
 - Seite `impressum` („Impressum & Datenschutz", inkl. KI-Nutzungsvorbehalt nach § 44b UrhG) mit eigenem Handy-Layout.
+  Kurzfassung (2026-11-19) ohne MStV-Zeile; Rechte-Satz muss bleiben (Art. 13 DSGVO). Impressum hat `noindex`
+  (Adresse nicht in Suchmaschinen). E-Mail-Adressen in Textboxen werden live verschlüsselt ausgeliefert
+  (`opt.protectEmail` in render.mjs → `.em[data-em]`, site.js macht daraus einen mailto-Link).
   `document.mjs` hängt an jede andere Seite unten `<footer class="legal">` mit Link darauf (nur wenn die Seite existiert).
 
 ## Gotchas

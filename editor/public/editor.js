@@ -1441,8 +1441,7 @@ function pagePanel() {
   <div class="sec"><h4>${isIndex ? '★ Startseite' : 'Projektseite'}</h4>
     <div class="row"><label>Titel</label><input type="text" data-page="title" value="${esc(page.title)}"></div>
     ${isIndex ? `<div class="row"><label>Website-Name</label><input type="text" data-site="title" value="${esc(site.title)}"></div>` : `
-    <div class="row"><label>Adresse</label><span style="flex:1;overflow:hidden;text-overflow:ellipsis">/${esc(page.id)}.html</span><button data-act="renamePage">ändern</button></div>
-    <div class="row"><label>Zurück-Knopf</label><button data-act="toggleBack" class="toggle${page.back ? ' active' : ''}">${page.back ? 'an' : 'aus'}</button></div>`}
+    <div class="row"><label>Adresse</label><span style="flex:1;overflow:hidden;text-overflow:ellipsis">/${esc(page.id)}.html</span><button data-act="renamePage">ändern</button></div>`}
     <div class="row"><label>Hintergrund</label><input type="color" data-page="bg" value="${esc(page.bg || BG)}"><button data-act="bgReset">Standard</button></div>
   </div>
   <div class="sec"><h4>Fläche · ${screens} Bildschirme hoch</h4>
@@ -1654,7 +1653,6 @@ insp.addEventListener('click', async e => {
     case 'trimTop': return trim('top');
     case 'trimBottom': return trim('bottom');
     case 'bgReset': pushUndo(); page.bg = ''; layout(); renderInspector(); return markDirty();
-    case 'toggleBack': page.back = !page.back; renderInspector(); return markDirty();
     case 'renamePage': return renamePage(page.id);
     case 'deletePage': return deletePage(page.id);
     case 'newPage': return newPage();

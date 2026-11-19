@@ -178,7 +178,11 @@ export function itemHTML(it, i, p, site, opt) {
   const ext = /^https?:\/\//i.test(href || '');
   const head = `<${tag} class="${cls}" data-i="${i}"${href ? ` href="${esc(href)}"` : ''}${ext ? ' target="_blank" rel="noopener"' : ''}`;
   if (it.type === 'text') {
-    return `${head} style="${esc(pos)}"><div class="tx" style="${esc(`width:${num(+it.w, 600)}px;` + textCss(styleOf(it, site), pageW(p)))}">${esc(it.text)}</div></${tag}>`;
+    let body = esc(it.text);
+    // E-Mail-Adressen vor Adress-Sammlern verbergen: verschlüsselt im HTML, site.js macht daraus einen Link
+    if (opt.protectEmail) body = body.replace(/([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, (m, a, b) =>
+      `<span class="em" data-em="${[...m].map(c => c.charCodeAt(0) + 3).join('.')}">${a} [at] ${b.replace(/\./g, ' [punkt] ')}</span>`);
+    return `${head} style="${esc(pos)}"><div class="tx" style="${esc(`width:${num(+it.w, 600)}px;` + textCss(styleOf(it, site), pageW(p)))}">${body}</div></${tag}>`;
   }
   // Zufallsschnitt: Clips aus einem Unterordner, live zufällig geschnitten (randomcut.mjs)
   if (it.type === 'random') {

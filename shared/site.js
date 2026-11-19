@@ -1,18 +1,24 @@
 // Live-Seite: Video-Verhalten. (ES-Modul)
 import { randomCut } from './randomcut.mjs';
 
-// · Zurück-Knopf: kam man von dieser Website, wie „Zurück" im Browser -> man landet an derselben Stelle,
-//   von der aus man geklickt hat (Browser stellt die Scrollposition wieder her). Sonst: Link zur Startseite.
+// · E-Mail-Adressen entschlüsseln (stehen verschlüsselt im HTML, damit Adress-Sammler sie nicht finden)
+document.querySelectorAll('.em[data-em]').forEach(function (el) {
+  var addr = el.dataset.em.split('.').map(function (n) { return String.fromCharCode(n - 3); }).join('');
+  if (el.closest('a')) { el.textContent = addr; return; }
+  var a = document.createElement('a'); a.href = 'mailto:' + addr; a.textContent = addr; a.style.color = 'inherit';
+  el.replaceWith(a);
+});
+
+// · Links zurück: zeigt ein Link auf genau die Seite, von der man gekommen ist, verhält er sich wie „Zurück"
+//   im Browser -> man landet an derselben Stelle, von der aus man geklickt hat (Scrollposition bleibt erhalten).
 (function () {
-  var back = document.querySelector('a.back');
-  if (!back) return;
-  back.addEventListener('click', function (e) {
-    try {
-      if (document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1) {
-        e.preventDefault();
-        history.back();
-      }
-    } catch (_) {}
+  var from = '';
+  try { if (document.referrer && new URL(document.referrer).origin === location.origin) from = document.referrer.split('#')[0]; } catch (_) {}
+  if (!from) return;
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+    if (a.href.split('#')[0] === from && history.length > 1) { e.preventDefault(); history.back(); }
   });
 })();
 
