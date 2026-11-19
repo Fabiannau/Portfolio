@@ -90,7 +90,8 @@ content/pages/<id>/
 - Editor: Auswahlrahmen/Griffe in Objekt-Richtung (Mitte = Mitte von `getBoundingClientRect`, Maße = w/h·scale);
   Skalieren rechnet den Mausweg in Objekt-Richtung um, die Gegenecke bleibt stehen. Zuschneiden zeigt das Bild kurz gerade.
   „In Striche auflösen" dreht die Striche mit. `rot` ist Geometrie (`GEO`) -> pro Layout (Handy eigen).
-- Taste **A** (wie V) = Auswahlwerkzeug.
+- Taste **A** (wie V) = Auswahlwerkzeug. **⇧A + ↓/↑** (A gehalten): `selectBeyond()` nimmt alles unterhalb (Oberkante ≥ Oberkante der
+  Auswahl) bzw. oberhalb (Unterkante ≤ Unterkante der Auswahl) dazu; fixierte Elemente nicht (hängen am Bildschirm).
 - Nach Änderungen an `shared/render.mjs` den Server neu starten (Vorschau nutzt das geladene Modul).
 - Editor per URL öffnen: `/#seite=<id>` (nicht `/#<id>` -> öffnet sonst die Startseite!). Tests nie auf echten Seiten.
 

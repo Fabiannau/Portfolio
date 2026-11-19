@@ -1130,6 +1130,23 @@ function rotSection(cur) {
     <button data-act="rot" data-d="-90" title="90° nach links">↺ 90°</button><button data-act="rot" data-d="90" title="90° nach rechts">↻ 90°</button><button data-act="rot" data-d="0" title="Gerade stellen">0°</button></div>
     <div class="note">Oder am runden Griff über dem Objekt ziehen – mit ⇧ in 15°-Schritten.</div></div>`;
 }
+// ⇧A + ↑/↓: alles oberhalb bzw. unterhalb der Auswahl dazunehmen (Auswahl selbst bleibt drin).
+// Unten = Oberkante liegt auf/unter der Oberkante der Auswahl; oben = Unterkante auf/über deren Unterkante.
+// Fixierte Elemente hängen am Bildschirm, nicht an der Seite -> werden nicht miterfasst.
+function selectBeyond(down) {
+  const cur = targets();
+  if (!cur.length) return setStatus('Erst ein Objekt markieren, dann ⇧A + ↑/↓', 'err');
+  const box = i => itemBox(i);
+  const ref = down ? Math.min(...cur.map(i => box(i).y)) : Math.max(...cur.map(i => box(i).y + box(i).h));
+  const keep = new Set(cur);
+  L.items.forEach((it, i) => {
+    if (it.pin || keep.has(i)) return;
+    const b = box(i);
+    if (down ? b.y >= ref : b.y + b.h <= ref) keep.add(i);
+  });
+  setSelection([...keep].sort((a, b) => a - b).map(i => L.items[i]));
+  setStatus(`${keep.size} Objekte ${down ? 'ab hier abwärts' : 'ab hier aufwärts'} markiert`, 'ok');
+}
 function nudge(dx, dy) {
   const idx = targets();
   if (!idx.length) return;
@@ -1474,7 +1491,7 @@ function multiPanel() {
   ${(() => { const rs = new Set(objs.map(o => +o.rot || 0)); return rotSection(rs.size === 1 ? [...rs][0] : null); })()}
   <div class="sec"><h4>📌 Beim Scrollen</h4><div class="seg">${pinBtn('', 'scrollt mit')}${pinBtn('t', 'oben fixiert')}${pinBtn('b', 'unten fixiert')}</div>
     ${same === null ? '<div class="note">Gemischt – ein Klick stellt alle gleich ein.</div>' : ''}</div>
-  <div class="note">⇧-Klick: hinzufügen / entfernen · Ziehen: alle zusammen bewegen · Pfeiltasten: verschieben · ⌘A: alles · Esc: aufheben</div>`;
+  <div class="note">⇧-Klick: hinzufügen / entfernen · Ziehen: alle zusammen bewegen · Pfeiltasten: verschieben · ⌘A: alles · ⇧A+↓/↑: alles darunter/darüber dazu · Esc: aufheben</div>`;
 }
 function lassoPanel() {
   return `<div class="sec"><h4>Handschrift-Auswahl · ${lassoSel.length} ${lassoSel.length === 1 ? 'Strich' : 'Striche'}</h4>
@@ -1506,7 +1523,7 @@ function pagePanel() {
     <div class="note">Stile legst du an, indem du eine Textbox gestaltest und „Als neuen Stil speichern" wählst.</div>
   </div>
   ${isIndex ? '' : '<div class="sec"><button class="danger wide" data-act="deletePage">Seite löschen</button></div>'}
-  <div class="note">⇧-Klick Mehrfachauswahl · ⌘A alles · ⌘G Handschrift gruppieren · M Desktop/Handy · A Auswählen · B Pinsel · E Radierer · L Lasso · T Text · K Zuschneiden · ⌘D Duplizieren · Leertaste+Ziehen = schieben · ⌘+Scroll = Zoom · G Übersicht</div>`;
+  <div class="note">⇧-Klick Mehrfachauswahl · ⌘A alles · ⇧A+↓/↑ alles darunter/darüber · ⌘G Handschrift gruppieren · M Desktop/Handy · A Auswählen · B Pinsel · E Radierer · L Lasso · T Text · K Zuschneiden · ⌘D Duplizieren · Leertaste+Ziehen = schieben · ⌘+Scroll = Zoom · G Übersicht</div>`;
 }
 const isUrl = v => /^https?:\/\//i.test(v || '');
 function linkSection(it) {
@@ -2306,6 +2323,8 @@ window.addEventListener('keydown', e => {
   if (mod && (k === '=' || k === '+')) { e.preventDefault(); setZoom(zoom * 1.25); return; }
   if (mod && k === '-') { e.preventDefault(); setZoom(zoom / 1.25); return; }
   if (mod) return;
+  if (k === 'a') aHeld = true;
+  if (aHeld && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); if (!e.repeat) selectBeyond(e.key === 'ArrowDown'); return; }
   if (e.key === ' ') { e.preventDefault(); if (!spaceDown) { spaceDown = true; body.classList.add('space-pan'); } return; }
   const toolKeys = { a: 'select', v: 'select', b: 'brush', e: 'eraser', l: 'lasso', t: 'text' };
   if (toolKeys[k]) return setTool(toolKeys[k]);
@@ -2337,8 +2356,9 @@ window.addEventListener('keydown', e => {
     nudge(arrows[e.key][0] * f, arrows[e.key][1] * f);
   }
 });
-window.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; body.classList.remove('space-pan'); } });
-window.addEventListener('blur', () => { spaceDown = false; body.classList.remove('space-pan'); });
+let aHeld = false; // A gedrückt halten (+ ⇧) und ↑/↓ = alles darüber/darunter markieren
+window.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'a') aHeld = false; if (e.key === ' ') { spaceDown = false; body.classList.remove('space-pan'); } });
+window.addEventListener('blur', () => { aHeld = false; spaceDown = false; body.classList.remove('space-pan'); });
 
 // ---------- Start ----------
 async function boot() {
