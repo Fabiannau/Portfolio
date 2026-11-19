@@ -26,7 +26,8 @@ function galleryCSS(ui) {
 export function renderDocument(page, site, fonts, ids, variants = null, galleryUi = null) {
   const known = new Set(ids);
   const opt = {
-    variants: variants ? (pid, src) => variants.get(src) : null,
+    // variants: Funktion (pid, src) -> Fassungen (seitenübergreifend) oder Map der eigenen Seite
+    variants: typeof variants === 'function' ? variants : variants ? (pid, src) => (pid === page.id ? variants.get(src) : null) : null,
     media: (pid, f) => `media/${encodeURIComponent(pid)}/${encodeURIComponent(f)}`,
     protectEmail: true,
     link: id => (/^https?:\/\//i.test(id) ? id : known.has(id) ? pageFile(id) : null), // Seite oder externe Webseite

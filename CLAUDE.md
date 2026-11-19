@@ -84,6 +84,10 @@ content/pages/<id>/
   beider Fälle – Löschen, Duplizieren, Ebenen (`moveLayer`), Pfeiltasten (`nudge`), Fixieren (`setPin`) arbeiten damit.
 - Ziehen eines gewählten Objekts bewegt alle (`drag.mode = 'multi'`, unten fixierte intern „von oben").
 - Objekt-Referenzen statt Indizes, weil sich Indizes beim Umsortieren ändern; `applyState`/`enterLayout` leeren `multi`.
+- **Gruppe skalieren:** Mehrfachauswahl hat 4 Eck-Griffe (`data-c="g-<ecke>"`, `startGroupScale()`, Modus `gscale`):
+  einheitlicher Faktor aus dem Mausweg entlang der Diagonale, Anker = gegenüberliegende Gruppenecke (Bildschirm-px). Jedes
+  Objekt rechnet den Anker über seine Mitte in eigene Einheiten um -> funktioniert auch für fixierte/gedrehte. Text: Breite
+  + Schriftgröße (`over.size`) skalieren mit.
 
 ## Drehen (`it.rot`, Grad −180…180)
 - Runder Griff über der Auswahl (⇧ = 15°-Schritte, rastet bei 0/90/180° leicht ein) oder Inspector „⟳ Drehung"
@@ -130,6 +134,22 @@ content/pages/<id>/
 - `editor/public/editor.js` – Editor (ES-Modul). Abschnitte: Undo · Speichern (Autosave 1,5 s, nur geänderte Tinten-Kacheln) ·
   Kacheln · Pinsel (`inkDab`, Stellschrauben `WOBBLE_AMOUNT/SPECK_CHANCE/SPECK_ALPHA`) · Lasso (SVG-Overlay) · Elemente ·
   Text (contenteditable plaintext-only) · Erweitern/Kürzen · Zuschneiden · Medien/Upload/Jobs · Inspector · Seiten · Übersicht.
+
+## Mediathek seitenübergreifend (`it.from`)
+- Jede Datei liegt genau EINMAL im Ordner einer Seite. Objekte anderer Seiten verweisen mit `it.from = <Seiten-ID>` darauf
+  (fehlt `from` = eigene Seite). `render.mjs itemHTML`: `mp = it.from || p.id` für src/poster/dir/Fassungen (`resp`).
+  Handschrift-Objekte (`draw_<id>.png`) und Tinte bleiben immer seitenbezogen.
+- Fassungen: `renderDocument(..., variants)` nimmt eine Funktion `(pid, src)` -> `allVariants(P)` (Build + Vorschau).
+- Editor-Mediathek: oben eigene Medien, darunter je Seite aufklappbar (`otherMedia`, `/api/media` & `/api/page` liefern `others`).
+  Platzieren aus einer anderen Seite setzt `from`; nichts wird kopiert.
+- Hochladen: SHA-1 der Datei -> schon vorhanden (`content/.media-index.json` Upload-Hash -> {page,name}, sonst gleiche
+  Größe+Hash aller Medien)? -> Upload verworfen, Antwort `{name, from, reused:true}`.
+- „⧉ Doppelte Dateien zusammenführen" (`POST /api/media-dedupe`, optional `{pages:[…]}` zum Testen): gleiche Dateien ->
+  eine behalten (Startseite zuerst, dann alphabetisch, kürzester Name), Verweise umbiegen (`repoint`), Rest + Poster löschen,
+  doppelte `_originals` ebenfalls. Editor speichert vorher und lädt die Seite danach neu (sonst überschreibt Autosave!).
+- Schutz: Datei löschen, die andere Seiten nutzen -> 409. Seite umbenennen -> `from` wird mitgezogen. Seite löschen ->
+  noch benutzte Dateien ziehen zur ersten nutzenden Seite um.
+- NIE serverseitig Seiten umschreiben, während der Editor sie offen hat (Autosave schreibt den alten Stand zurück).
 
 ## Medien-Pipeline (Server)
 - **Fotos**: > 3200 px oder HEIC/TIFF → macOS `sips` → JPEG Q88, max. 3200 px. Kleine Web-Formate unverändert.

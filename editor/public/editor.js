@@ -35,6 +35,7 @@ let mode = 'desktop';       // 'desktop' | 'mobile'
 let L = null;               // aktive Ansicht: Desktop = page selbst, Handy = abgeleitete Ansicht (buildMobileL)
 const LW = () => L.width || W;
 let media = [];             // Medien der aktuellen Seite
+let otherMedia = [];        // Medien der übrigen Seiten [{id,title,media}] – nutzbar ohne Kopie (it.from)
 let view = 'page';
 let tool = 'select';
 let brushSize = 22;
@@ -618,6 +619,14 @@ function renderHandles() {
       g.className = 'selbox group';
       Object.assign(g.style, { left: x1 - st.left - 6 + 'px', top: y1 - st.top - 6 + 'px', width: x2 - x1 + 12 + 'px', height: y2 - y1 + 12 + 'px' });
       handlesEl.appendChild(g);
+      // Ecken der Gruppe: alle gewählten Objekte zusammen skalieren
+      for (const [c, fx, fy] of [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]]) {
+        const h = document.createElement('div');
+        h.className = 'handle ' + c; h.dataset.c = 'g-' + c;
+        h.title = 'Alle zusammen skalieren';
+        h.style.left = x1 - st.left - 6 + (x2 - x1 + 12) * fx + 'px'; h.style.top = y1 - st.top - 6 + (y2 - y1 + 12) * fy + 'px';
+        handlesEl.appendChild(h);
+      }
     }
     return;
   }
@@ -685,7 +694,9 @@ const onItemDbl = e => {
 };
 itemsEl.addEventListener('dblclick', onItemDbl);
 const onHandleDown = e => {
-  const h = e.target.closest('.handle'); if (!h || sel < 0) return;
+  const h = e.target.closest('.handle'); if (!h) return;
+  if (h.dataset.c.startsWith('g-') && multi.length) { e.preventDefault(); e.stopPropagation(); return startGroupScale(e, h.dataset.c.slice(2)); }
+  if (sel < 0) return;
   e.preventDefault(); e.stopPropagation();
   if (h.dataset.c === 'rot') { // Drehen um die Mitte
     const r = rectOf(itemEl(sel)), cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
@@ -695,11 +706,48 @@ const onHandleDown = e => {
   drag = { mode: 'resize', c: h.dataset.c, i: sel, start: toPage(e.clientX, e.clientY), o: dragOrig(sel), moved: false };
 };
 handlesEl.addEventListener('pointerdown', onHandleDown);
+// Gruppe skalieren: alles in Bildschirm-px um die gegenüberliegende Ecke der Gruppe; jedes Objekt rechnet den
+// Ankerpunkt in sein eigenes Koordinatensystem um (fixierte Objekte zählen vom Bildschirm, andere von der Seite)
+function startGroupScale(e, c) {
+  const st = stage.getBoundingClientRect();
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  const list = multiIdx().map(j => {
+    const el = itemEl(j), r = rectOf(el), o = dragOrig(j), it = L.items[j];
+    x1 = Math.min(x1, r.left); y1 = Math.min(y1, r.top); x2 = Math.max(x2, r.right); y2 = Math.max(y2, r.bottom);
+    const h0 = it.type === 'text' ? itemBox(j).h : o.h;
+    // Bildschirm-Position des Seiten-Punkts (0,0) für dieses Objekt (über die Mitte – stimmt auch gedreht)
+    const ox = (r.left + r.right) / 2 - (o.x + o.w / 2) * scale, oy = (r.top + r.bottom) / 2 - (o.y + h0 / 2) * scale;
+    return { j, o, h0, ox, oy, size0: it.type === 'text' ? +styleOf(it, site).size : 0 };
+  });
+  const ax = c.includes('w') ? x2 : x1, ay = c.includes('n') ? y2 : y1; // Anker = gegenüberliegende Ecke
+  drag = { mode: 'gscale', list, ax, ay, sx: c.includes('e') ? 1 : -1, sy: c.includes('s') ? 1 : -1, W0: x2 - x1, H0: y2 - y1,
+    cx: e.clientX, cy: e.clientY, start: toPage(e.clientX, e.clientY), moved: false };
+}
 window.addEventListener('pointermove', e => {
   if (!drag) return;
   const p = toPage(e.clientX, e.clientY);
   const dx = p.x - drag.start.x, dy = p.y - drag.start.y;
   if (!drag.moved) { if (Math.hypot(dx, dy) * scale < 3) return; drag.moved = true; pushUndo(); }
+  if (drag.mode === 'gscale') {
+    const d = drag, dx = (e.clientX - d.cx) * d.sx, dy = (e.clientY - d.cy) * d.sy;
+    const k = Math.max(0.05, 1 + (dx * d.W0 + dy * d.H0) / (d.W0 * d.W0 + d.H0 * d.H0)); // Mausweg entlang der Diagonale
+    for (const { j, o, h0, ox, oy, size0 } of d.list) {
+      const it = L.items[j];
+      const axu = (d.ax - ox) / scale, ayu = (d.ay - oy) / scale; // Anker in Einheiten dieses Objekts
+      const nx = axu + (o.x - axu) * k, ny = ayu + (o.y - ayu) * k, nh = h0 * k;
+      it.x = Math.round(nx); it.w = Math.max(10, Math.round(o.w * k));
+      if (it.type !== 'text') it.h = Math.max(10, Math.round(o.h * k));
+      it.y = Math.round(o.pin === 'b' ? o._hs - ny - nh : ny);
+      if (it.type === 'text' && size0) { // Schrift mitskalieren
+        it.over = { ...(o.over || {}), size: Math.max(4, Math.round(size0 * k * 10) / 10) };
+        const tx = boxEl(itemEl(j)); if (tx) tx.style.fontSize = it.over.size + 'px';
+      }
+      syncItem(j);
+    }
+    renderHandles();
+    setStatus(`Skalierung ${Math.round(k * 100)} %`);
+    return;
+  }
   if (drag.mode === 'multi') {
     for (const { j, o } of drag.list) {
       const it = L.items[j], ty = o.y + dy;
@@ -743,6 +791,7 @@ window.addEventListener('pointermove', e => {
 window.addEventListener('pointerup', () => {
   if (!drag) return;
   if (drag.moved) { measureTexts(); renderHandles(); markDirty(); if (drag.mode === 'rotate') renderInspector(); }
+  if (drag.mode === 'gscale' && drag.moved && drag.list.some(x => L.items[x.j].type === 'text')) renderItems(); // Text sauber neu setzen
   hidePinGuide();
   drag = null;
 });
@@ -890,7 +939,7 @@ function enterCrop() {
   const box = { x: it.x, y: it.y, w: it.w, h: it.h };
   const mk = () => {
     const m = document.createElement(it.type === 'video' ? 'video' : 'img');
-    m.src = mediaUrl(edOpt, page.id, it.src);
+    m.src = mediaUrl(edOpt, it.from || page.id, it.src);
     if (it.type === 'video') { m.muted = true; m.loop = true; m.autoplay = true; m.playsInline = true; }
     return m;
   };
@@ -1164,9 +1213,9 @@ function viewCenter() {
   const sr = scroller.getBoundingClientRect();
   return toPage(sr.left + sr.width / 2, sr.top + sr.height / 2);
 }
-function mediaDims(src, kind) {
+function mediaDims(src, kind, from) {
   return new Promise(res => {
-    const url = mediaUrl(edOpt, page.id, src);
+    const url = mediaUrl(edOpt, from || page.id, src);
     if (kind === 'video') {
       const v = document.createElement('video');
       v.preload = 'metadata'; v.muted = true;
@@ -1194,8 +1243,10 @@ function placeMedia(src, kind, dims, at, extra = {}) {
   renderItems(); select(L.items.length - 1); renderMedia(); markDirty();
 }
 async function placeFromLibrary(m, at) {
-  const dims = await mediaDims(m.name, m.kind);
-  placeMedia(m.name, m.kind, dims, at, m.kind === 'video' && m.poster ? { poster: m.poster } : {});
+  const dims = await mediaDims(m.name, m.kind, m.from);
+  const extra = m.kind === 'video' && m.poster ? { poster: m.poster } : {};
+  if (m.from && m.from !== page.id) extra.from = m.from; // Datei bleibt auf ihrer Seite – kein zweiter Speicherplatz
+  placeMedia(m.name, m.kind, dims, at, extra);
 }
 function uploadFile(file) {
   return new Promise(resolve => {
@@ -1213,49 +1264,83 @@ function uploadFile(file) {
 }
 async function handleFiles(files, at) {
   const pid = page.id;
-  let off = 0, ok = 0;
+  let off = 0, ok = 0, reused = 0;
   for (const f of files) {
     const r = await uploadFile(f);
     if (!r || !page || page.id !== pid) continue;
     ok++;
     if (r.job) watching.add(r.job);
     let dims = { w: r.w, h: r.h };
-    if (!r.w || !r.h) dims = r.job ? { w: 1920, h: 1080 } : await mediaDims(r.name, r.kind);
+    if (!r.w || !r.h) dims = r.job ? { w: 1920, h: 1080 } : await mediaDims(r.name, r.kind, r.from);
     const pos = at ? { x: at.x + off, y: at.y + off } : null; off += 60;
     if (r.job) await pollJobs(); // „wird optimiert"-Markierung sofort zeigen
-    placeMedia(r.name, r.kind, dims, pos, r.kind === 'video' && r.poster ? { poster: r.poster } : {});
+    const extra = r.kind === 'video' && r.poster ? { poster: r.poster } : {};
+    if (r.from) extra.from = r.from;
+    if (r.reused) reused++;
+    placeMedia(r.name, r.kind, dims, pos, extra);
   }
-  if (ok) setStatus(watching.size ? 'Hochgeladen – Video wird optimiert…' : 'Hochgeladen ✓', 'ok');
+  if (reused) setStatus(`${reused === ok ? '' : 'Hochgeladen ✓ · '}${reused} ${reused === 1 ? 'Datei gab' : 'Dateien gab'} es schon in der Mediathek – wiederverwendet, kein zusätzlicher Speicherplatz`, 'ok');
+  else if (ok) setStatus(watching.size ? 'Hochgeladen – Video wird optimiert…' : 'Hochgeladen ✓', 'ok');
   await refreshMedia();
 }
 async function refreshMedia() {
   if (!page) return;
-  try { media = (await api('/api/media?id=' + encodeURIComponent(page.id))).media; } catch {}
+  try { const r = await api('/api/media?id=' + encodeURIComponent(page.id)); media = r.media; otherMedia = r.others || []; } catch {}
   renderMedia();
 }
 const fmtSize = b => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
 function renderMedia() {
   if (!page) return;
-  const placed = new Set(L.items.map(i => i.src));
+  const placed = new Set(L.items.map(i => (i.from || page.id) + '/' + i.src));
   const running = jobs.filter(j => j.page === page.id && (j.status === 'läuft' || j.status === 'wartet'));
   const failed = jobs.filter(j => j.page === page.id && j.status === 'fehler');
   let h = running.map(j => `<div class="media-item"><div class="badge">⏳ ${esc(j.name)} · ${j.status === 'wartet' ? 'wartet' : Math.round(j.progress * 100) + ' %'}</div></div>`).join('');
   h += failed.map(j => `<div class="media-item"><div class="badge err">✕ ${esc(j.name)}: ${esc(j.error || 'Fehler')}</div></div>`).join('');
-  h += media.map((m, i) => {
-    const url = edMedia(page.id, m.name);
+  const tile = (m, pid, key) => {
+    const url = edMedia(pid, m.name);
     const thumb = m.kind === 'video'
-      ? (m.poster ? `<img src="${esc(edMedia(page.id, m.poster))}" alt="">` : `<video src="${esc(url)}#t=0.5" muted preload="metadata"></video>`)
+      ? (m.poster ? `<img src="${esc(edMedia(pid, m.poster))}" alt="" loading="lazy">` : `<video src="${esc(url)}#t=0.5" muted preload="metadata"></video>`)
       : `<img src="${esc(url)}" alt="" loading="lazy">`;
     const big = m.size > 95 * 1048576;
-    return `<div class="media-item${placed.has(m.name) ? ' placed' : ''}" draggable="true" data-m="${i}" title="${esc(m.name)}">${thumb}` +
+    return `<div class="media-item${placed.has(pid + '/' + m.name) ? ' placed' : ''}" draggable="true" data-m="${key}" title="${esc(m.name)}">${thumb}` +
       `<div class="badge${big ? ' warn' : ''}">${m.kind === 'video' ? '▶ ' : ''}${big ? '⚠ zu groß für GitHub · ' : ''}${fmtSize(m.size)}</div></div>`;
-  }).join('');
+  };
+  h += media.map((m, i) => tile(m, page.id, i)).join('');
   if (!h) h = '<div class="note" style="grid-column:1/-1">Noch keine Medien. Einfach Dateien auf die Fläche ziehen.</div>';
+  // Medien der anderen Seiten: direkt benutzbar, die Datei wird NICHT kopiert
+  h += otherMedia.map((g, gi) => `<details class="media-other"${openGroups.has(g.id) ? ' open' : ''} data-g="${esc(g.id)}"><summary>${esc(g.title || g.id)} <span>${g.media.length}</span></summary>` +
+    `<div class="media-grid">${g.media.map((m, i) => tile(m, g.id, gi + ':' + i)).join('')}</div></details>`).join('');
   mediaGrid.innerHTML = h;
+}
+// Bestehende Duplikate (gleiche Datei auf mehreren Seiten) einmalig zusammenführen
+$('btnDedupe').addEventListener('click', async () => {
+  if (!page) return;
+  if (!confirm('Doppelte Dateien zusammenführen?\n\nGleiche Fotos/Videos, die auf mehreren Seiten (oder doppelt auf einer Seite) liegen, werden nur noch einmal gespeichert. Alle Seiten zeigen danach genau dasselbe – nur weniger Speicherplatz.')) return;
+  if (editing) commitText();
+  if (dirty) await save();
+  setStatus('Suche doppelte Dateien…', '', true);
+  try {
+    const r = await postJSON('/api/media-dedupe', {});
+    const scroll = scroller.scrollTop;
+    await openPage(page.id, { noSave: true }); // Seite neu laden (Verweise wurden auf der Festplatte angepasst)
+    scroller.scrollTop = scroll;
+    await loadAll();
+    setStatus(r.files ? `${r.files} doppelte ${r.files === 1 ? 'Datei' : 'Dateien'} entfernt · ${fmtSize(r.bytes)} gespart · ${r.refs} Verweise angepasst` : 'Keine doppelten Dateien gefunden ✓', 'ok', true);
+  } catch (e) { setStatus(e.message, 'err'); }
+});
+const openGroups = new Set(); // aufgeklappte Seiten in der Mediathek merken
+mediaGrid.addEventListener('toggle', e => { const d = e.target.closest?.('details[data-g]'); if (d) d.open ? openGroups.add(d.dataset.g) : openGroups.delete(d.dataset.g); }, true);
+// Eintrag der Mediathek -> {name, kind, poster, from?}
+function mediaAt(key) {
+  key = String(key);
+  if (!key.includes(':')) return media[Number(key)];
+  const [g, i] = key.split(':').map(Number);
+  const grp = otherMedia[g], m = grp?.media[i];
+  return m ? { ...m, from: grp.id, fromTitle: grp.title } : null;
 }
 mediaGrid.addEventListener('click', e => {
   const el = e.target.closest('[data-m]'); if (!el) return;
-  placeFromLibrary(media[Number(el.dataset.m)]);
+  const m = mediaAt(el.dataset.m); if (m) placeFromLibrary(m);
 });
 mediaGrid.addEventListener('dragstart', e => {
   const el = e.target.closest('[data-m]'); if (!el) return;
@@ -1265,13 +1350,14 @@ mediaGrid.addEventListener('dragstart', e => {
 mediaGrid.addEventListener('contextmenu', e => {
   const el = e.target.closest('[data-m]'); if (!el) return;
   e.preventDefault();
-  const m = media[Number(el.dataset.m)];
+  const m = mediaAt(el.dataset.m); if (!m) return;
+  if (m.from) return showMenu(e.clientX, e.clientY, [{ label: 'Platzieren', fn: () => placeFromLibrary(m) }, '-', { label: `Liegt auf „${m.fromTitle || m.from}" – dort löschbar`, fn: () => {} }]);
   showMenu(e.clientX, e.clientY, [
     { label: 'Platzieren', fn: () => placeFromLibrary(m) },
     '-',
     { label: 'Datei aus dem Ordner löschen', danger: true, fn: async () => {
-      if (L.items.some(it => it.src === m.name) && !confirm(`${m.name} wird auf dieser Seite noch benutzt. Trotzdem löschen?`)) return;
-      await postJSON('/api/media-delete', { id: page.id, name: m.name });
+      if (L.items.some(it => !it.from && it.src === m.name) && !confirm(`${m.name} wird auf dieser Seite noch benutzt. Trotzdem löschen?`)) return;
+      try { await postJSON('/api/media-delete', { id: page.id, name: m.name }); } catch (err) { setStatus(err.message, 'err'); }
       refreshMedia();
     } },
   ]);
@@ -1349,7 +1435,7 @@ pageView.addEventListener('drop', e => {
   dragDepth = 0; body.classList.remove('dragging-files');
   const at = toPage(e.clientX, e.clientY);
   const lib = e.dataTransfer.getData('application/x-media');
-  if (lib !== '') return placeFromLibrary(media[Number(lib)], at);
+  if (lib !== '') { const m = mediaAt(lib); return m && placeFromLibrary(m, at); }
   const all = [...e.dataTransfer.files];
   const fontFiles = all.filter(isFontFile);
   const files = all.filter(f => !isFontFile(f));
@@ -1874,7 +1960,7 @@ async function openPage(id, { noSave = false } = {}) {
   let r;
   try { r = await api('/api/page?id=' + encodeURIComponent(id)); }
   catch (e) { setStatus(e.message, 'err'); if (id !== 'index') return openPage('index', { noSave: true }); return; }
-  page = r.page; media = r.media;
+  page = r.page; media = r.media; otherMedia = r.others || [];
   sel = -1; undoStack = []; redoStack = []; updateHistory(); dirty = false;
   const idsAdded = ensureIds(page);
   allPages.set(page.id, page);

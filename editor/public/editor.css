@@ -331,3 +331,9 @@ body[data-mode="mobile"] .extend small { display: none; }
 /* Dreh-Griff über der Auswahl */
 .handle.rot { width: 14px; height: 14px; cursor: grab; background: var(--accent); border-color: #fff; }
 .handle.rot:active { cursor: grabbing; }
+/* Mediathek: Medien der anderen Seiten (aufklappbar) */
+.media-other { grid-column: 1 / -1; border-top: 1px solid var(--line, #333); padding-top: 6px; }
+.media-other summary { cursor: pointer; font-size: 12px; opacity: .8; padding: 2px 0 6px; }
+.media-other summary span { opacity: .6; margin-left: 4px; }
+.media-other .media-grid { margin-bottom: 6px; }
+#btnDedupe { margin-top: 8px; }

@@ -10,7 +10,8 @@ import { promisify } from 'node:util';
 import { paths, readSite, normalizeSite, listPageIds, readPage, listMedia, listFonts, IMG_EXT, VID_EXT, isMediaFile } from '../shared/store.mjs';
 import { renderDocument } from '../shared/document.mjs';
 import { fontInfo, toWoff, unzip } from '../shared/fontinfo.mjs';
-import { fontFileInfo, listVariants, VAR_DIR, VAR_WIDTHS, VAR_SRC, readGalleryUi, GAL_ROLES } from '../shared/store.mjs';
+import { fontFileInfo, listVariants, VAR_DIR, VAR_WIDTHS, VAR_SRC, readGalleryUi, GAL_ROLES, allVariants, pageObjects, usesFile } from '../shared/store.mjs';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import { normalizePage, SCREEN } from '../shared/render.mjs';
 
@@ -107,6 +108,106 @@ async function relink(from, to) {
     for (const it of pg.items) if (it.link === from) { if (to) it.link = to; else delete it.link; ch = true; }
     if (ch) await writePage(pg);
   }
+}
+// ---------- Mediathek seitenübergreifend ----------
+// Jede Datei liegt genau einmal im Ordner EINER Seite; andere Seiten verweisen mit it.from = <Seite> darauf.
+async function fileHash(fp) { const h = createHash('sha1'); for await (const c of createReadStream(fp)) h.update(c); return h.digest('hex'); }
+const INDEX_FILE = () => path.join(P.content, '.media-index.json'); // Hash der hochgeladenen Datei -> {page, name}
+async function readIndex() { try { return JSON.parse(await fs.readFile(INDEX_FILE(), 'utf8')); } catch { return {}; } }
+async function remember(hash, page, name) { const ix = await readIndex(); ix[hash] = { page, name }; await fs.writeFile(INDEX_FILE(), JSON.stringify(ix, null, 1)); }
+async function allMedia() { // [{page, name, size, kind, poster}]
+  const out = [];
+  for (const id of await listPageIds(P)) for (const m of await listMedia(P, id)) out.push({ page: id, ...m });
+  return out;
+}
+// Gibt es diese Datei (gleicher Inhalt) schon irgendwo? -> {page, name, poster, kind}
+async function findExisting(hash, fp) {
+  const all = await allMedia();
+  const ix = (await readIndex())[hash];
+  if (ix) { const m = all.find(x => x.page === ix.page && x.name === ix.name); if (m) return m; }
+  const size = (await fs.stat(fp)).size;
+  for (const m of all) if (m.size === size && (await fileHash(path.join(P.pages, m.page, m.name))) === hash) return m;
+  return null;
+}
+// Verweise auf (fromPage, name) in allen Seiten umbiegen -> (toPage, toName[, toPoster])
+async function repoint(fromPage, name, toPage, toName, toPoster) {
+  let n = 0;
+  for (const id of await listPageIds(P)) {
+    const pg = await readPage(P, id);
+    let ch = false;
+    for (const it of pageObjects(pg)) {
+      if (!usesFile(it, id, fromPage, name) || it.src !== name) continue;
+      it.src = toName;
+      if (toPoster !== undefined) { if (toPoster) it.poster = toPoster; else delete it.poster; }
+      if (toPage === id) delete it.from; else it.from = toPage;
+      ch = true; n++;
+    }
+    if (ch) await writePage(pg);
+  }
+  return n;
+}
+// Wer benutzt Dateien der Seite <pid>? (andere Seiten) -> [{page, name}]
+async function foreignUses(pid, name = null) {
+  const out = [];
+  for (const id of await listPageIds(P)) {
+    if (id === pid) continue;
+    const pg = await readPage(P, id);
+    for (const it of pageObjects(pg)) if ((it.from || id) === pid && (!name || it.src === name || it.poster === name)) out.push({ page: id, title: pg.title, name: it.src });
+  }
+  return out;
+}
+async function otherMedia(id) { // Mediathek: Medien der übrigen Seiten
+  const others = [];
+  for (const pid of await listPageIds(P)) {
+    if (pid === id) continue;
+    const media = await listMedia(P, pid);
+    if (media.length) others.push({ id: pid, title: (await readPage(P, pid)).title, media });
+  }
+  return others;
+}
+async function removeMediaFile(pid, name) {
+  const dir = pageDir(pid), ext = path.extname(name);
+  await fs.rm(path.join(dir, name), { force: true });
+  await fs.rm(path.join(dir, name.slice(0, -ext.length) + '.poster.jpg'), { force: true });
+}
+// Bestehende Duplikate zusammenführen: gleiche Datei mehrfach -> eine behalten, Rest verweist darauf
+async function dedupeAll(only = null) { // only: auf diese Seiten beschränken (z. B. für Tests)
+  const inScope = id => !only || only.includes(id);
+  const all = (await allMedia()).filter(m => inScope(m.page));
+  const bySize = new Map();
+  for (const m of all) { if (!bySize.has(m.size)) bySize.set(m.size, []); bySize.get(m.size).push(m); }
+  let files = 0, bytes = 0, refs = 0;
+  const touched = new Set();
+  for (const group of bySize.values()) {
+    if (group.length < 2) continue;
+    const byHash = new Map();
+    for (const m of group) { const h = await fileHash(path.join(P.pages, m.page, m.name)); if (!byHash.has(h)) byHash.set(h, []); byHash.get(h).push(m); }
+    for (const same of byHash.values()) {
+      if (same.length < 2) continue;
+      // behalten: Startseite zuerst, dann alphabetisch; innerhalb einer Seite der kürzeste Name (ohne „-1")
+      same.sort((a, b) => (a.page === 'index' ? -1 : b.page === 'index' ? 1 : a.page.localeCompare(b.page)) || a.name.length - b.name.length || a.name.localeCompare(b.name));
+      const keep = same[0];
+      for (const d of same.slice(1)) {
+        refs += await repoint(d.page, d.name, keep.page, keep.name, keep.kind === 'video' ? keep.poster : undefined);
+        await removeMediaFile(d.page, d.name);
+        files++; bytes += d.size; touched.add(d.page);
+      }
+    }
+  }
+  // doppelte Originale (nur lokal, nicht veröffentlicht) ebenfalls nur einmal behalten
+  const seen = new Map();
+  for (const id of (await listPageIds(P)).filter(inScope)) {
+    const od = path.join(P.pages, id, '_originals');
+    for (const f of (await fs.readdir(od).catch(() => [])).sort()) {
+      const fp = path.join(od, f);
+      const st = await fs.stat(fp).catch(() => null);
+      if (!st || !st.isFile()) continue;
+      const h = await fileHash(fp);
+      if (seen.has(h)) { await fs.rm(fp, { force: true }); bytes += st.size; files++; } else seen.set(h, fp);
+    }
+  }
+  for (const id of touched) await ensureVariants(id).catch(() => {}); // Bildfassungen der entfernten Dateien aufräumen
+  return { files, bytes, refs };
 }
 async function summaries() {
   const out = [];
@@ -206,6 +307,20 @@ async function handleUpload(req, res, id, rawName) {
   const orig = path.join(odir, await uniqueName(odir, base, ext));
   await pipeline(req, createWriteStream(orig));
 
+  // Gleiche Datei gibt es schon (auf dieser oder einer anderen Seite)? -> wiederverwenden statt neu speichern
+  const hash = await fileHash(orig);
+  const hit = await findExisting(hash, orig);
+  if (hit) {
+    await fs.rm(orig, { force: true });
+    const fp = path.join(P.pages, hit.page, hit.name);
+    let w = 0, h = 0;
+    try {
+      if (hit.kind === 'image') { const { stdout } = await pexec('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', fp], { env: ENV }); w = Number(/pixelWidth: (\d+)/.exec(stdout)?.[1] || 0); h = Number(/pixelHeight: (\d+)/.exec(stdout)?.[1] || 0); }
+      else if (await ffmpegOk()) { const i = await probe(fp); w = i.w; h = i.h; }
+    } catch {}
+    return sendJson(res, 200, { ok: true, kind: hit.kind, name: hit.name, from: hit.page !== id ? hit.page : undefined, poster: hit.poster || undefined, w, h, reused: true });
+  }
+
   if (kind === 'image') {
     const webOk = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.svg'].includes(ext);
     let w = 0, h = 0;
@@ -233,6 +348,7 @@ async function handleUpload(req, res, id, rawName) {
       if (big) { const s = 3200 / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
     }
     ensureVariants(id); // kleinere Fassungen im Hintergrund erzeugen
+    await remember(hash, id, name);
     return sendJson(res, 200, { ok: true, kind, name, w, h });
   }
 
@@ -241,6 +357,7 @@ async function handleUpload(req, res, id, rawName) {
     if (!VID_EXT.has(ext)) return sendJson(res, 400, { error: 'ffmpeg fehlt – nur MP4/WebM möglich (brew install ffmpeg).' });
     const name = await uniqueName(dir, base, ext);
     await fs.rename(orig, path.join(dir, name));
+    await remember(hash, id, name);
     return sendJson(res, 200, { ok: true, kind, name, w: 1920, h: 1080 });
   }
   let info;
@@ -270,6 +387,7 @@ async function handleUpload(req, res, id, rawName) {
       const st = await fs.stat(out);
       if (st.size > GIT_MAX) job.warn = `Datei ist ${Math.round(st.size / 1048576)} MB – GitHub erlaubt max. 100 MB pro Datei. Video kürzen oder extern hosten.`;
       job.progress = 1; job.status = 'fertig';
+      await remember(hash, id, name);
     } catch (e) {
       job.status = 'fehler'; job.error = String(e.message || e).slice(0, 300);
     }
@@ -453,7 +571,7 @@ const server = http.createServer(async (req, res) => {
           const id = safeId(q('id'));
           const dir = pageDir(id);
           if (!dir || !(await exists(dir))) return sendJson(res, 404, { error: 'Seite nicht gefunden' });
-          return sendJson(res, 200, { page: await readPage(P, id), media: await listMedia(P, id) });
+          return sendJson(res, 200, { page: await readPage(P, id), media: await listMedia(P, id), others: await otherMedia(id) });
         }
         case 'POST /api/page': {
           const id = safeId(q('id'));
@@ -465,7 +583,7 @@ const server = http.createServer(async (req, res) => {
         }
         case 'GET /api/media': {
           const id = safeId(q('id'));
-          return sendJson(res, 200, { media: await listMedia(P, id) });
+          return sendJson(res, 200, { media: await listMedia(P, id), others: await otherMedia(id) });
         }
         case 'POST /api/pages': { // neue Seite
           const b = await readJson(req);
@@ -488,6 +606,11 @@ const server = http.createServer(async (req, res) => {
             await fs.rename(from, to);
             const pg = await readPage(P, newId); pg.id = newId; await writePage(pg);
             await relink(id, newId);
+            for (const pid of await listPageIds(P)) { // Medien-Verweise (it.from) mitziehen
+              const pg = await readPage(P, pid); let ch = false;
+              for (const it of pageObjects(pg)) if (it.from === id) { it.from = newId; ch = true; }
+              if (ch) await writePage(pg);
+            }
             const site = await readSite(P);
             if (site.graph[id]) { site.graph[newId] = site.graph[id]; delete site.graph[id]; await writeSite(site); }
           }
@@ -498,7 +621,22 @@ const server = http.createServer(async (req, res) => {
           if (!id || id === 'index') return sendJson(res, 400, { error: 'Die Startseite kann nicht gelöscht werden' });
           const dir = pageDir(id);
           if (!dir || dir === P.pages) return sendJson(res, 400, { error: 'Ungültige Seite' });
+          // Medien, die andere Seiten noch benutzen, ziehen zur ersten davon um (statt verloren zu gehen)
+          const moved = new Map();
+          for (const u of await foreignUses(id)) {
+            if (!u.name || moved.has(u.name)) continue;
+            const tdir = pageDir(u.page), ext = path.extname(u.name), src = path.join(dir, u.name);
+            if (!(await exists(src))) continue;
+            const nn = await uniqueName(tdir, path.basename(u.name, ext), ext);
+            await fs.rename(src, path.join(tdir, nn));
+            const pst = path.join(dir, path.basename(u.name, ext) + '.poster.jpg');
+            let np;
+            if (await exists(pst)) { np = path.basename(nn, ext) + '.poster.jpg'; await fs.rename(pst, path.join(tdir, np)); }
+            await repoint(id, u.name, u.page, nn, np);
+            moved.set(u.name, u.page);
+          }
           await fs.rm(dir, { recursive: true, force: true });
+          for (const pid of new Set(moved.values())) ensureVariants(pid).catch(() => {});
           await relink(id, null);
           const site = await readSite(P);
           delete site.graph[id]; await writeSite(site);
@@ -620,11 +758,15 @@ const server = http.createServer(async (req, res) => {
           const dir = pageDir(safeId(b.id));
           const fp = dir && within(dir, path.basename(String(b.name || '')));
           if (!fp || fp === dir) return sendJson(res, 400, { error: 'Ungültig' });
+          const used = await foreignUses(safeId(b.id), path.basename(fp));
+          if (used.length) return sendJson(res, 409, { error: `Wird noch auf „${[...new Set(used.map(u => u.title || u.page))].join('", „')}" benutzt – dort erst entfernen` });
           await fs.rm(fp, { force: true });
           const ext = path.extname(fp);
           await fs.rm(fp.slice(0, -ext.length) + '.poster.jpg', { force: true });
           return sendJson(res, 200, { ok: true });
         }
+        case 'POST /api/media-dedupe':
+          { const b = await readJson(req).catch(() => ({})); return sendJson(res, 200, { ok: true, ...(await dedupeAll(Array.isArray(b.pages) ? b.pages.map(safeId) : null)) }); }
         case 'POST /api/publish': {
           try {
             try { await git(['remote', 'get-url', 'origin']); }
@@ -659,7 +801,7 @@ const server = http.createServer(async (req, res) => {
         const id = safeId(rest.slice(0, -5));
         const ids = await listPageIds(P);
         if (!ids.includes(id)) return send(res, 404, 'Seite nicht gefunden');
-        return send(res, 200, renderDocument(await readPage(P, id), await readSite(P), await listFonts(P), ids, await listVariants(P, id), await readGalleryUi(P)), 'text/html; charset=utf-8');
+        return send(res, 200, renderDocument(await readPage(P, id), await readSite(P), await listFonts(P), ids, await allVariants(P), await readGalleryUi(P)), 'text/html; charset=utf-8');
       }
       return send(res, 404, 'Not found');
     }

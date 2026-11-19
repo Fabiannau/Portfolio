@@ -1,0 +1,49 @@
+{
+ "Screenshot_2.png": {
+  "fmt": "webp",
+  "q": 82,
+  "ssim": 0.98646,
+  "mt": 1795113641516.964,
+  "w0": 2000
+ },
+ "Screenshot_4.png": {
+  "fmt": "webp",
+  "q": 82,
+  "ssim": 0.980171,
+  "mt": 1795113641622.194,
+  "w0": 2000
+ },
+ "Screenshot_6.png": {
+  "fmt": "webp",
+  "q": 82,
+  "ssim": 0.981231,
+  "mt": 1795113641661.2874,
+  "w0": 2000
+ },
+ "rACzf1MEBDxnxOfB.png": {
+  "fmt": "webp",
+  "q": 82,
+  "ssim": 0.980515,
+  "mt": 1795114310737.3896,
+  "w0": 552
+ },
+ "FILMFEST_TRIER_-_NOMINEE_LORBEEREN-1.png": {
+  "fmt": "jpg",
+  "q": 90,
+  "mt": 1795114314180.9875,
+  "w0": 2661
+ },
+ "FILMFEST_TRIER_-_NOMINEE_LORBEEREN.png": {
+  "fmt": "webp",
+  "q": 82,
+  "ssim": 1,
+  "mt": 1795114554317.0876,
+  "w0": 2661
+ },
+ "rACzf1MEBDxnxOfB-1.png": {
+  "fmt": "jpg",
+  "q": 90,
+  "mt": 1795114847988.5771,
+  "w0": 552
+ }
+}

@@ -179,6 +179,8 @@ export function itemHTML(it, i, p, site, opt) {
   const cls = `it it-${esc(it.type)}${it.link ? ' has-link' : ''}${it.pin && !opt.thumb ? ' pinned' : ''}`;
   const ext = /^https?:\/\//i.test(href || '');
   const gal = it.gal && it.type === 'image' ? ` data-gal="${esc(it.gal)}"` : ''; // Galerie (Großansicht + Karussell)
+  // Mediathek seitenübergreifend: it.from = Seite, in deren Ordner die Datei liegt (sonst die eigene)
+  const mp = it.from || p.id;
   const head = `<${tag} class="${cls}" data-i="${i}"${gal}${href ? ` href="${esc(href)}"` : ''}${ext ? ' target="_blank" rel="noopener"' : ''}`;
   if (it.type === 'text') {
     let body = esc(it.text);
@@ -190,7 +192,7 @@ export function itemHTML(it, i, p, site, opt) {
   }
   // Zufallsschnitt: Clips aus einem Unterordner, live zufällig geschnitten (randomcut.mjs)
   if (it.type === 'random') {
-    const dirUrl = mediaUrl(opt, p.id, it.dir || '');
+    const dirUrl = mediaUrl(opt, mp, it.dir || '');
     const poster = it.poster ? `${dirUrl}/${encodeURIComponent(it.poster)}` : '';
     if (opt.thumb || opt.editor) return `${head} style="${esc(pos)}">${poster ? `<img class="rc-poster" src="${esc(poster)}" alt="">` : ''}</${tag}>`;
     const clips = (it.clips || []).map(c => `${dirUrl}/${encodeURIComponent(c)}`);
@@ -206,10 +208,10 @@ export function itemHTML(it, i, p, site, opt) {
   }
   const inner = esc(cropInner(it));
   if (it.type === 'video') {
-    const src = esc(mediaUrl(opt, p.id, it.src));
-    const poster = it.poster ? ` poster="${esc(mediaUrl(opt, p.id, it.poster))}"` : '';
+    const src = esc(mediaUrl(opt, mp, it.src));
+    const poster = it.poster ? ` poster="${esc(mediaUrl(opt, mp, it.poster))}"` : '';
     let v;
-    if ((opt.thumb || opt.editor) && it.poster) v = `<img src="${esc(mediaUrl(opt, p.id, it.poster))}" alt="" style="${inner}">`;
+    if ((opt.thumb || opt.editor) && it.poster) v = `<img src="${esc(mediaUrl(opt, mp, it.poster))}" alt="" style="${inner}">`;
     else if (opt.thumb || opt.editor) v = `<video src="${src}#t=0.5" muted playsinline preload="metadata" style="${inner}"></video>`;
     else if (it.mode === 'scene' && !opt.editor && !href) {
       // Szene: startet, sobald ganz im Bild; Ton blendet mit der Sichtbarkeit ein/aus; Klick = Ton an/aus (site.js)
@@ -224,14 +226,14 @@ export function itemHTML(it, i, p, site, opt) {
     return `${head} style="${esc(pos)}">${v}</${tag}>`;
   }
   // image
-  const src = esc(mediaUrl(opt, p.id, it.src));
+  const src = esc(mediaUrl(opt, mp, it.src));
   const img = `<img src="${src}" alt="${esc(it.alt || '')}" loading="lazy" decoding="async" style="${inner}">`;
-  const vars = opt.variants ? opt.variants(p.id, it.src) : null;
+  const vars = opt.variants ? opt.variants(mp, it.src) : null;
   if (!vars || !vars.length) return `${head} style="${esc(pos)}">${img}</${tag}>`;
   // angezeigte Breite = Anteil an der Seitenbreite (bei Ausschnitt entsprechend größer) -> exakte „sizes"
   const vw = Math.min(400, it.w / pageW(p) / (it.crop ? it.crop.w : 1) * 100);
-  const dir = opt.media(p.id, 'resp');
-  const srcset = vars.map(v => `${v.orig ? mediaUrl(opt, p.id, it.src) : `${dir}/${encodeURIComponent(v.name)}`} ${v.w}w`).join(', ');
+  const dir = opt.media(mp, 'resp');
+  const srcset = vars.map(v => `${v.orig ? mediaUrl(opt, mp, it.src) : `${dir}/${encodeURIComponent(v.name)}`} ${v.w}w`).join(', ');
   const sizes = `${vw.toFixed(2)}vw`;
   if (vars[0].type === 'image/jpeg') { // JPEG-Fassungen: direkt im <img>
     return `${head} style="${esc(pos)}"><img src="${src}" srcset="${esc(srcset)}" sizes="${sizes}" alt="${esc(it.alt || '')}" loading="lazy" decoding="async" style="${inner}"></${tag}>`;

@@ -112,6 +112,17 @@ export async function listVariants(P, id) {
   return out;
 }
 
+// Fassungen aller Seiten (für Objekte, die Medien einer anderen Seite nutzen) -> (pid, src) => [...]
+export async function allVariants(P) {
+  const all = new Map();
+  for (const id of await listPageIds(P)) all.set(id, await listVariants(P, id));
+  return (pid, src) => all.get(pid)?.get(src) || null;
+}
+// alle Objekte einer Seite (Desktop + nur fürs Handy)
+export const pageObjects = pg => [...(pg.items || []), ...(pg.m?.own || [])];
+// Benutzt ein Objekt die Datei <name> aus dem Ordner der Seite <pid>?
+export const usesFile = (it, ownerPage, pid, name) => (it.from || ownerPage) === pid && (it.src === name || it.poster === name);
+
 // ---- Galerie-Symbole (eigene Handschrift) – content/ui/gal-<rolle>.png + gallery.json {rolle: {w,h,v}} ----
 export const GAL_ROLES = ['prev', 'next', 'close'];
 export async function readGalleryUi(P) {

@@ -3,7 +3,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { paths, readSite, listPageIds, readPage, listFonts, isMediaFile, listVariants, readGalleryUi } from './shared/store.mjs';
+import { paths, readSite, listPageIds, readPage, listFonts, isMediaFile, listVariants, readGalleryUi, allVariants } from './shared/store.mjs';
 import { renderDocument, pageFile } from './shared/document.mjs';
 import { robotsTxt, aiTxt, tdmrepJson } from './shared/aiprotect.mjs';
 
@@ -15,13 +15,14 @@ const site = await readSite(P);
 const ids = await listPageIds(P);
 const fonts = await listFonts(P);
 const galleryUi = await readGalleryUi(P);
+const variantsOf = await allVariants(P); // seitenübergreifend (it.from)
 
 await fs.rm(DIST, { recursive: true, force: true });
 await fs.mkdir(path.join(DIST, 'media'), { recursive: true });
 
 for (const id of ids) {
   const page = await readPage(P, id);
-  await fs.writeFile(path.join(DIST, decodeURIComponent(pageFile(id))), renderDocument(page, site, fonts, ids, await listVariants(P, id), galleryUi));
+  await fs.writeFile(path.join(DIST, decodeURIComponent(pageFile(id))), renderDocument(page, site, fonts, ids, variantsOf, galleryUi));
   const src = path.join(P.pages, id), dst = path.join(DIST, 'media', id);
   await fs.mkdir(dst, { recursive: true });
   const keepInk = new Set((page.ink || []).map(k => `ink_${k}.png`));
